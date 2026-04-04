@@ -1,12 +1,18 @@
+/**
+ * Price guess provider — surfaces active bets and guesses to the agent context.
+ * Shows the last guess and count of active bets.
+ */
 import { Provider, IAgentRuntime, Memory, State } from "@elizaos/core";
 import { getStore } from "../store.ts";
 
 export const priceGuessProvider: Provider = {
-  get: async (runtime: IAgentRuntime, _message: Memory, _state?: State) => {
+  get: async (_runtime: IAgentRuntime, _message: Memory, _state?: State) => {
     const guesses = getStore<any[]>("PRICE_GUESSES") || [];
     const bets = getStore<any[]>("BETS") || [];
 
-    if (!guesses.length && !bets.length) return { text: "No active predictions or bets." };
+    if (!guesses.length && !bets.length) {
+      return { text: "No active predictions or bets. Start a game or place a bet!" };
+    }
 
     let text = "";
     if (guesses.length) {

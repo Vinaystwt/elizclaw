@@ -1,6 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+/**
+ * ActivityFeed — shows recent task executions with status indicators.
+ * Auto-refreshes every 30 seconds to reflect new activity.
+ */
+
 const icons: Record<string, string> = { success: '✓', failed: '✕', running: '◌', skipped: '↷' };
 const dotColors: Record<string, string> = {
   success: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]',
@@ -12,9 +17,19 @@ const dotColors: Record<string, string> = {
 export function ActivityFeed() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const fetchLogs = () => {
+    fetch('/api/logs')
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => { setLogs((data.logs || []).slice(0, 8)); setLoading(false); setError(false); })
+      .catch(() => { setLoading(false); setError(true); });
+  };
 
   useEffect(() => {
-    fetch('/api/logs').then(r => r.json()).then(data => { setLogs((data.logs || []).slice(0, 8)); setLoading(false); }).catch(() => setLoading(false));
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   const ago = (date: string) => {
@@ -25,8 +40,41 @@ export function ActivityFeed() {
     return `${Math.floor(s / 86400)}d ago`;
   };
 
-  if (loading) return <div className="animate-shimmer h-32 rounded-xl" />;
-  if (logs.length === 0) return <p className="text-[#5a5a70] text-[14px] py-8 text-center">No activity yet</p>;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="flex items-center gap-3.5 py-3 px-3">
+            <div className="w-7 h-7 rounded-lg bg-white/[0.04] animate-pulse" />
+            <div className="flex-1 h-4 bg-white/[0.04] rounded animate-pulse" />
+            <div className="w-12 h-3 bg-white/[0.04] rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-[#5a5a70] text-[14px]">Could not load activity.</p>
+        <button onClick={fetchLogs} className="mt-2 text-violet-400 text-[13px] hover:text-violet-300 transition-colors">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <div className="w-10 h-10 mx-auto rounded-xl bg-white/[0.04] flex items-center justify-center mb-3">
+          <span className="text-lg">📋</span>
+        </div>
+        <p className="text-[#5a5a70] text-[14px]">No activity yet. Tasks will appear here when they run.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1">
@@ -39,9 +87,15 @@ export function ActivityFeed() {
             <p className="text-[14px] font-medium text-[#d4d4de] truncate group-hover:text-white transition-colors">
               {log.task_name || log.task_type || 'Unnamed task'}
             </p>
-            {log.output && <p className="text-[12px] text-[#5a5a70] truncate mt-0.5">{log.output.substring(0, 60)}</p>}
+            {log.output && (
+              <p className="text-[12px] text-[#5a5a70] truncate mt-0.5" title={log.output}>
+                {log.output.substring(0, 60)}
+              </p>
+            )}
           </div>
-          <span className="text-[12px] text-[#5a5a70] whitespace-nowrap tabular-nums">{ago(log.executed_at)}</span>
+          <span className="text-[12px] text-[#5a5a70] whitespace-nowrap tabular-nums">
+            {ago(log.executed_at)}
+          </span>
         </div>
       ))}
     </div>

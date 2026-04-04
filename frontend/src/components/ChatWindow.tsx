@@ -2,9 +2,27 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 
+/**
+ * ChatWindow — natural language interface to the agent.
+ * Handles message sending, loading states, and connection errors gracefully.
+ */
+
+const WELCOME = "Hey 👋 I'm ElizClaw.\n\nTell me what to automate. For example:\n\n• Check BTC price every morning\n• Place a bet on BTC > $100k\n• Start a price guess game\n• Summarize Hacker News daily";
+
+// Simple markdown-like formatter: bold **text** → <strong>, newlines preserved
+function formatMessage(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 export function ChatWindow() {
-  const [messages, setMessages] = useState<any[]>([
-    { role: 'assistant', content: "Hey 👋 I'm ElizClaw.\n\nTell me what to automate. For example:\n\n• Check BTC price every morning\n• Place a bet on BTC > $100k\n• Start a price guess game\n• Summarize Hacker News daily" },
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([
+    { role: 'assistant', content: WELCOME },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,16 +32,31 @@ export function ChatWindow() {
 
   const send = async () => {
     if (!input.trim() || loading) return;
-    setMessages(prev => [...prev, { role: 'user', content: input.trim() }]);
+
+    const userMsg = input.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setInput('');
     setLoading(true);
+
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: input }) });
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg }),
+      });
+
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Processing...' }]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Can't connect right now." }]);
-    } finally { setLoading(false); }
+    } catch (err: any) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "⚠️ Can't connect right now. The agent may be offline. Check your connection and try again.",
+      }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,7 +71,7 @@ export function ChatWindow() {
                   <span className="text-xs">🐾</span>
                 </div>
                 <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-md px-4 py-3 text-[14px] leading-relaxed text-[#d4d4de] whitespace-pre-wrap">
-                  {msg.content}
+                  {formatMessage(msg.content)}
                 </div>
               </div>
             ) : (
@@ -49,10 +82,11 @@ export function ChatWindow() {
           </div>
         ))}
 
+        {/* Loading indicator */}
         {loading && (
           <div className="flex justify-start animate-slide-in">
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-lg shadow-violet-500/20">
                 <span className="text-xs">🐾</span>
               </div>
               <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-md px-4 py-3.5">
