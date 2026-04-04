@@ -46,6 +46,12 @@ export default function TasksPage() {
     { key: 'inactive', label: 'Paused', count: tasks.filter(t => !t.is_active).length },
   ];
 
+  const filtered = tasks.filter(t => {
+    if (filter === 'active') return t.is_active;
+    if (filter === 'inactive') return !t.is_active;
+    return true;
+  });
+
   return (
     <div className="space-y-8">
       {/* Header */}
