@@ -1,0 +1,14 @@
+node_modules
+dist
+.next
+out
+data
+*.sqlite
+*.db
+.env
+.env.local
+.vscode
+.idea
+.DS_Store
+bun.lockb
+frontend/node_modules

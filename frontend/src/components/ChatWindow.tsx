@@ -1,0 +1,92 @@
+'use client';
+import { useState, useRef, useEffect } from 'react';
+import { Send } from 'lucide-react';
+
+export function ChatWindow() {
+  const [messages, setMessages] = useState<any[]>([
+    { role: 'assistant', content: "Hey 👋 I'm ElizClaw.\n\nTell me what to automate. For example:\n\n• Check BTC price every morning\n• Place a bet on BTC > $100k\n• Start a price guess game\n• Summarize Hacker News daily" },
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    setMessages(prev => [...prev, { role: 'user', content: input.trim() }]);
+    setInput('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: input }) });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Processing...' }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Can't connect right now." }]);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="flex flex-col h-[480px]">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
+            {msg.role === 'assistant' ? (
+              <div className="flex gap-3 max-w-[85%]">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-lg shadow-violet-500/20">
+                  <span className="text-xs">🐾</span>
+                </div>
+                <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-md px-4 py-3 text-[14px] leading-relaxed text-[#d4d4de] whitespace-pre-wrap">
+                  {msg.content}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl rounded-tr-md px-4 py-3 text-[14px] leading-relaxed text-white max-w-[75%] shadow-lg shadow-violet-500/10">
+                {msg.content}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start animate-slide-in">
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-xs">🐾</span>
+              </div>
+              <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-tl-md px-4 py-3.5">
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2.5">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Tell me what to automate..."
+          className="input-field flex-1 text-[14px]"
+          disabled={loading}
+        />
+        <button
+          onClick={send}
+          disabled={loading || !input.trim()}
+          className="btn-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg w-12 h-12 p-0 flex items-center justify-center rounded-xl"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

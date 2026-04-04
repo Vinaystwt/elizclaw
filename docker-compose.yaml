@@ -1,0 +1,17 @@
+services:
+    elizclaw:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ./data:/app/data
+        environment:
+            - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+            - OPENAI_API_URL=${OPENAI_API_URL:-http://localhost:8000/v1}
+            - SERVER_PORT=3000
+            - DATA_DIR=/app/data
+            - AGENT_URL=http://localhost:3000
+        ports:
+            - "3000:3000"
+            - "3001:3001"
+        restart: always
