@@ -209,7 +209,15 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **JSDoc comments** on all 13 action/provider/evaluator files
 - **JSDoc comments** on utility functions in http.ts
 
-### Session 8: Phase 3 — Technical Hardening
+### Session 9: Phase 4 — Documentation Suite
+- **Mermaid Architecture Diagram**: Added to README.md showing complete system flow.
+- **How It Works Section**: 3 plain-English paragraphs explaining ElizaOS pattern, scheduling system, single-port architecture.
+- **Architecture Decisions Section**: Table with 7 rows covering every major choice (persistence, scheduling, frontend, validation, logging, wallet data, monitoring focus).
+- **OpenClaw Alignment + Hero Statement**: Top-of-README hero section with OpenClaw ethos framing + tech stack tagline.
+- **JUDGE_GUIDE.md**: 5-step evaluation path, scoring notes for all 5 criteria, test commands.
+- **CONTRIBUTING.md**: How to add actions/providers/evaluators, code style, testing instructions.
+- **README fully rewritten**: Hero statement → Features → Mermaid → How It Works → Architecture Decisions → Usage → Config → Plugins → Code Structure → Docker → Nosana → Tech Stack.
+- **Helius signup guide removed** — moved to WAITING block for Nosana phase.
 - **Zod validation schemas**: Created `src/plugins/utils/schemas.ts` with 10 schemas (CreateTaskInput, MonitorPriceInput, WalletTrackerInput, WhaleWatcherInput, WebScrapeInput, ApiCallInput, SignalMonitorInput, AgentReportInput, PredictionMarketInput). Integrated into monitorPrice.ts, walletTracker.ts, webScrape.ts.
 - **Global error handler**: Created `src/lib/error-handler.ts` with `AppError` class + `handleError()`. Sanitizes all errors, never exposes stack traces. Registered as global `uncaughtException` / `unhandledRejection` handlers.
 - **Structured logging with pino**: Created `src/lib/logger.ts` — pino with pino-pretty in dev, raw JSON in production. Scheduler loop uses structured JSON logging for Nosana Docker log aggregation.
@@ -589,15 +597,18 @@ READY FOR PHASE [N+1]:
 - Star 4 required repos
 - Submit via SuperTeam Builders Challenge Page
 
-### WAITING — Nosana Deployment (when credits arrive)
-- Get Nosana credits
-- Add Docker HEALTHCHECK instruction
+### WAITING — Nosana Deployment + Signups (when credits arrive)
+- Get Nosana builders-credits (nosana.com/builders-credits)
+- Helius API key signup (helius.dev → Get Started Free → copy key → add to .env; free tier: 100,000 credits/month)
+- Fill API keys in nos_job_def/nosana_eliza_job_definition.json
+- Add Docker HEALTHCHECK instruction to Dockerfile
 - Push Docker image to Docker Hub
 - Add .dockerignore for optimized build
 - Optimize Docker image size (<400MB target)
 - Deploy via deploy.nosana.com
 - Add Nosana Deployment section to README with screenshots
 - Re-edit demo video with Nosana live URL
+- Star 4 required repos (Agent Challenge, nosana-programs, nosana-kit, ElizaOS)
 
 ---
 
