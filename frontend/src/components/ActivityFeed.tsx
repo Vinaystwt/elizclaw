@@ -1,55 +1,53 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { TrendingUp, Wallet, Radio, Eye, Globe, Zap } from 'lucide-react';
 
 /**
  * ActivityFeed — shows recent task executions with status indicators.
- * Auto-refreshes every 30 seconds to reflect new activity.
- * Renders sparkline charts for price_monitor entries with 2+ data points.
+ * Auto-refreshes every 30 seconds. Renders sparklines for price_monitor entries.
  */
 
-const icons: Record<string, string> = { success: '✓', failed: '✕', running: '◌', skipped: '↷' };
-const dotColors: Record<string, string> = {
-  success: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]',
-  failed: 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]',
-  running: 'bg-violet-400 shadow-[0_0_6px_rgba(167,139,250,0.5)] animate-pulse',
-  skipped: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]',
+const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  price_monitor: TrendingUp,
+  wallet_tracker: Wallet,
+  signal_monitor: Radio,
+  whale_watcher: Eye,
+  web_scrape: Globe,
+};
+
+const typeColors: Record<string, string> = {
+  price_monitor: 'text-amber-400',
+  wallet_tracker: 'text-indigo-400',
+  signal_monitor: 'text-emerald-400',
+  whale_watcher: 'text-red-400',
+  web_scrape: 'text-slate-400',
 };
 
 /**
  * Sparkline — inline SVG mini-chart for price history.
  */
-function Sparkline({ prices, width = 120, height = 32 }: { prices: number[]; width?: number; height?: number }) {
+function Sparkline({ prices, width = 120, height = 28 }: { prices: number[]; width?: number; height?: number }) {
   if (prices.length < 2) return null;
-
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const range = max - min || 1;
-
   const points = prices.map((p, i) => {
     const x = (i / (prices.length - 1)) * width;
     const y = height - ((p - min) / range) * (height - 4) - 2;
     return `${x},${y}`;
   }).join(' ');
-
   const isUp = prices[prices.length - 1] >= prices[0];
-  const lineColor = isUp ? '#34d399' : '#fb7185';
-  const fillColor = isUp ? 'rgba(52,211,153,0.1)' : 'rgba(251,113,133,0.1)';
-
-  // Area fill path
+  const color = isUp ? '#10B981' : '#EF4444';
+  const fill = isUp ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
   const areaPath = `M0,${height} L${points.split(' ')[0]} ${points.split(' ').map((p, i) => i === 0 ? '' : `L${p}`).join(' ')} L${width},${height} Z`;
-
   return (
-    <svg width={width} height={height} className="mt-1.5 rounded" style={{ display: 'block' }}>
-      <path d={areaPath} fill={fillColor} />
-      <polyline points={points} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={width} height={height} className="mt-1.5" style={{ display: 'block' }}>
+      <path d={areaPath} fill={fill} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/**
- * Extract price data from log output text.
- * Looks for patterns like "$98,450" or "BTC/USD: $98,450".
- */
 function extractPrices(output: string): number[] {
   const matches = output.match(/\$([\d,]+(?:\.\d+)?)/g);
   if (!matches) return [];
@@ -59,13 +57,12 @@ function extractPrices(output: string): number[] {
 export function ActivityFeed() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const fetchLogs = () => {
     fetch('/api/logs')
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { setLogs((data.logs || []).slice(0, 8)); setLoading(false); setError(false); })
-      .catch(() => { setLoading(false); setError(true); });
+      .then(data => { setLogs((data.logs || []).slice(0, 8)); setLoading(false); })
+      .catch(() => { setLogs([]); setLoading(false); });
   };
 
   useEffect(() => {
@@ -84,25 +81,13 @@ export function ActivityFeed() {
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="flex items-center gap-3.5 py-3 px-3">
-            <div className="w-7 h-7 rounded-lg bg-white/[0.04] animate-pulse" />
-            <div className="flex-1 h-4 bg-white/[0.04] rounded animate-pulse" />
-            <div className="w-12 h-3 bg-white/[0.04] rounded animate-pulse" />
+      <div className="space-y-2">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex items-center gap-3 py-2 px-2">
+            <div className="w-6 h-6 rounded bg-[#1E1E2E] animate-pulse" />
+            <div className="flex-1 h-3 bg-[#1E1E2E] rounded animate-pulse" />
           </div>
         ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-[#5a5a70] text-[14px]">Could not load activity.</p>
-        <button onClick={fetchLogs} className="mt-2 text-violet-400 text-[13px] hover:text-violet-300 transition-colors">
-          Try again
-        </button>
       </div>
     );
   }
@@ -110,56 +95,52 @@ export function ActivityFeed() {
   if (logs.length === 0) {
     return (
       <div className="py-8 text-center">
-        <div className="w-10 h-10 mx-auto rounded-xl bg-white/[0.04] flex items-center justify-center mb-3">
-          <span className="text-lg">📋</span>
+        <div className="w-10 h-10 mx-auto rounded-lg bg-[#0A0A0F] border border-[#1E1E2E] flex items-center justify-center mb-3">
+          <Zap className="w-4 h-4 text-indigo-500/30" />
         </div>
-        <p className="text-[#5a5a70] text-[14px]">No activity yet. Tasks will appear here when they run.</p>
+        <p className="text-[#94A3B8] text-[13px]">No activity yet.</p>
+        <p className="text-[#64748B] text-[11px] mt-0.5">Tasks will appear here when they execute.</p>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header with live indicator */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-white">Recent Activity</h3>
-        <div className="flex items-center gap-1.5">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="text-[11px] text-emerald-400 font-medium">Live</span>
-        </div>
-      </div>
-
-      {/* Activity list */}
-      <div className="space-y-1">
+    <div className="space-y-1">
       {logs.map((log, i) => {
+        const Icon = typeIcons[log.task_type] || Globe;
+        const color = typeColors[log.task_type] || 'text-slate-400';
         const prices = log.type === 'price_monitor' ? extractPrices(log.output || '') : [];
         return (
-          <div key={log.id || i} className="group flex items-start gap-3.5 py-3 px-3 rounded-xl hover:bg-white/[0.03] transition-all duration-200">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold text-white flex-shrink-0 mt-0.5 ${dotColors[log.status] || dotColors.skipped}`}>
-              {icons[log.status] || '·'}
+          <div key={log.id || i} className="group flex items-start gap-2.5 py-2 px-2 rounded-lg hover:bg-white/[0.02] transition-all duration-200">
+            <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${color}`}>
+              <Icon className="w-3.5 h-3.5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-medium text-[#d4d4de] truncate group-hover:text-white transition-colors">
+              <p className="text-[13px] font-medium text-[#E2E8F0] truncate group-hover:text-white transition-colors">
                 {log.task_name || log.task_type || 'Unnamed task'}
               </p>
               {log.output && (
-                <p className="text-[12px] text-[#5a5a70] truncate mt-0.5" title={log.output}>
+                <p className="text-[11px] text-[#64748B] truncate mt-0.5" title={log.output}>
                   {log.output.substring(0, 60)}
                 </p>
               )}
-              {/* Sparkline for price_monitor logs with 2+ prices */}
               {prices.length >= 2 && <Sparkline prices={prices} />}
             </div>
-            <span className="text-[12px] text-[#5a5a70] whitespace-nowrap tabular-nums mt-0.5">
-              {ago(log.executed_at)}
-            </span>
+            <div className="flex flex-col items-end gap-0.5 mt-0.5">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                log.status === 'success'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : log.status === 'failed'
+                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+              }`}>
+                {log.status === 'success' ? 'OK' : log.status === 'failed' ? 'FAIL' : 'RUN'}
+              </span>
+              <span className="text-[10px] font-mono text-[#64748B]">{ago(log.executed_at)}</span>
+            </div>
           </div>
         );
       })}
-    </div>
     </div>
   );
 }

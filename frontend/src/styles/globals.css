@@ -5,62 +5,97 @@
 @layer base {
   * { @apply border-border; }
   body {
-    @apply bg-[#08080d] text-[#e4e4ed] antialiased;
+    @apply text-[#F1F5F9] antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #0A0A0F;
+    position: relative;
+    z-index: 1;
   }
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.2); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.4); }
-  ::selection { @apply bg-violet-500/30 text-white; }
+
+  /* Subtle dot grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image: radial-gradient(circle, #1E1E2E 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0A0A0F; }
+  ::-webkit-scrollbar-thumb { background: #6366F1; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #818CF8; }
+  ::selection { @apply bg-indigo-500/30 text-white; }
 }
 
 @layer components {
-  /* Glass card */
+  /* Card — apply to ALL cards */
+  .card {
+    @apply bg-[#111118] border border-[#1E1E2E] rounded-xl p-4 
+           hover:border-indigo-500/30 transition-colors duration-200;
+  }
+  .card-glow {
+    @apply card shadow-[0_0_15px_rgba(99,102,241,0.1)];
+  }
+
+  /* Glass card (legacy compat) */
   .glass {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl;
+    @apply bg-[#111118] border border-[#1E1E2E] rounded-xl;
   }
   .glass-hover {
-    @apply hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-300;
+    @apply hover:bg-[#16161F] hover:border-[#1E1E2E] transition-all duration-300;
   }
 
   /* Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
+    @apply bg-indigo-600 hover:bg-indigo-500
            text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer
-           shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:-translate-y-0.5
-           active:translate-y-0 active:shadow-violet-500/10;
+           shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-indigo-500/10;
   }
   .btn-ghost {
-    @apply bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08]
-           text-[#a1a1b5] hover:text-white font-medium px-5 py-2.5 rounded-xl
-           transition-all duration-300 cursor-pointer hover:-translate-y-0.5;
+    @apply bg-[#111118] hover:bg-white/[0.05] border border-[#1E1E2E]
+           text-[#94A3B8] hover:text-[#F1F5F9] hover:border-indigo-500/30 font-medium 
+           px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer;
+  }
+  .btn-accent {
+    @apply bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30
+           text-indigo-400 font-medium px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer;
   }
 
   /* Inputs */
   .input-field {
-    @apply bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3
-           text-[#e4e4ed] placeholder-[#5a5a70]
-           focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40
+    @apply bg-[#0A0A0F] border border-[#1E1E2E] rounded-xl px-4 py-3
+           text-[#F1F5F9] placeholder-[#94A3B8]
+           focus:outline-none focus:border-indigo-500/50
            transition-all duration-200;
   }
 
   /* Badges */
   .badge { @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium; }
-  .badge-violet { @apply bg-violet-500/15 text-violet-400; }
-  .badge-green { @apply bg-emerald-500/15 text-emerald-400; }
-  .badge-red { @apply bg-rose-500/15 text-rose-400; }
-  .badge-amber { @apply bg-amber-500/15 text-amber-400; }
-  .badge-cyan { @apply bg-cyan-500/15 text-cyan-400; }
+  .badge-violet { @apply bg-indigo-500/15 text-indigo-400 border border-indigo-500/20; }
+  .badge-green { @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20; }
+  .badge-red { @apply bg-red-500/10 text-red-400 border border-red-500/20; }
+  .badge-amber { @apply bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-cyan { @apply bg-cyan-500/15 text-cyan-400 border border-cyan-500/20; }
 
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent;
+  /* Live indicator */
+  .live-dot {
+    @apply w-2 h-2 rounded-full bg-emerald-400 animate-pulse;
   }
 
-  /* Glow effects */
-  .glow-violet { @apply shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]; }
-  .glow-cyan { @apply shadow-[0_0_40px_-10px_rgba(6,182,212,0.3)]; }
+  /* Nav item active state */
+  .nav-active {
+    @apply bg-indigo-500/10 text-indigo-400 border-l-[3px] border-indigo-500;
+  }
+  .nav-inactive {
+    @apply text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-white/[0.05] border-l-[3px] border-transparent;
+  }
 }
 
 /* Page transitions */
@@ -74,6 +109,7 @@
 .animate-fade-up-delay-1 { animation-delay: 0.05s; opacity: 0; animation-fill-mode: forwards; }
 .animate-fade-up-delay-2 { animation-delay: 0.1s; opacity: 0; animation-fill-mode: forwards; }
 .animate-fade-up-delay-3 { animation-delay: 0.15s; opacity: 0; animation-fill-mode: forwards; }
+.animate-fade-up-delay-4 { animation-delay: 0.2s; opacity: 0; animation-fill-mode: forwards; }
 
 /* Pulse ring */
 @keyframes pulseRing {
@@ -88,17 +124,10 @@
   100% { background-position: 200% 0; }
 }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.08) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.08) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;
 }
-
-/* Floating animation */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-.animate-float { animation: float 3s ease-in-out infinite; }
 
 /* Slide in from right */
 @keyframes slideInRight {
@@ -106,11 +135,3 @@
   to { opacity: 1; transform: translateX(0); }
 }
 .animate-slide-in { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-/* Background grid pattern */
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-}

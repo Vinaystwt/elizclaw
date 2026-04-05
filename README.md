@@ -4,6 +4,20 @@ ElizClaw embodies the OpenClaw ethos — your agent, your data, your infrastruct
 
 Built on ElizaOS v2 · Deployed on Nosana GPU Network · Powered by Qwen3.5-27B
 
+## Screenshots
+
+![Dashboard](frontend/screenshots/01-dashboard-final.png)
+*Dashboard — live clock, stat cards, chat interface, whale watch timeline*
+
+![Tasks](frontend/screenshots/02-tasks-final.png)
+*Tasks — manage and schedule automation tasks*
+
+![Activity Log](frontend/screenshots/03-activity-final.png)
+*Activity Log — execution history and performance stats*
+
+![Settings](frontend/screenshots/04-settings-final.png)
+*Settings — agent configuration and about*
+
 ## Features
 
 ### Task Automation

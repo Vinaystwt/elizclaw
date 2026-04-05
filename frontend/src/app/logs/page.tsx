@@ -1,92 +1,122 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { Activity } from 'lucide-react';
 
-const icons: Record<string, string> = { success: '✓', failed: '✕', running: '◌', skipped: '↷' };
-const badgeClass: Record<string, string> = { success: 'badge-green', failed: 'badge-red', running: 'badge-violet', skipped: 'badge-amber' };
+const typeColors: Record<string, string> = {
+  price_monitor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  wallet_tracker: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+  signal_monitor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  whale_watcher: 'text-red-400 bg-red-500/10 border-red-500/20',
+  web_scrape: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  api_call: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+};
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState({ total: 0, success: 0, failed: 0, running: 0 });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
 
-  useEffect(() => { fetch('/api/logs').then(r => r.json()).then(data => { setLogs(data.logs || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  useEffect(() => {
+    fetch('/api/logs?limit=100')
+      .then(r => r.json())
+      .then(data => {
+        setLogs((data.logs || []).reverse());
+        setStats(data.stats || { total: 0, success: 0, failed: 0, running: 0 });
+        setLoading(false);
+      })
+      .catch(() => { setLogs([]); setStats({ total: 0, success: 0, failed: 0, running: 0 }); setLoading(false); });
+  }, []);
 
-  const filtered = filter === 'all' ? logs : logs.filter(l => l.status === filter);
-  const filterOptions = ['all', 'success', 'failed', 'running'];
+  const successRate = stats.total > 0 ? `${Math.round((stats.success / stats.total) * 100)}%` : '—';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 relative z-10">
       <div>
-        <h1 className="text-[32px] font-bold text-white tracking-tight">Activity</h1>
-        <p className="text-[#5a5a70] mt-1.5 text-[15px]">Complete execution history for all tasks.</p>
+        <h1 className="text-3xl font-semibold text-[#F1F5F9] tracking-tight">Activity Log</h1>
+        <p className="text-sm text-[#94A3B8] mt-1">Execution history and performance stats.</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        {filterOptions.map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 ${filter === f ? 'bg-violet-500/15 text-violet-400 shadow-[0_0_20px_-5px_rgba(139,92,246,0.3)]' : 'bg-white/[0.03] text-[#5a5a70] hover:bg-white/[0.06] hover:text-[#a1a1b5]'}`}>
-            {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card border-l-[3px] border-l-cyan-500">
+          <p className="text-xs text-[#94A3B8] mb-1">Total Executions</p>
+          <p className="text-2xl font-bold font-mono text-[#F1F5F9]">{loading ? '—' : stats.total}</p>
+        </div>
+        <div className="card border-l-[3px] border-l-emerald-500">
+          <p className="text-xs text-[#94A3B8] mb-1">Success Rate</p>
+          <p className="text-2xl font-bold font-mono text-[#F1F5F9]">{loading ? '—' : successRate}</p>
+        </div>
+        <div className="card border-l-[3px] border-l-amber-500">
+          <p className="text-xs text-[#94A3B8] mb-1">Most Active</p>
+          <p className="text-sm font-mono text-[#F1F5F9]">{loading ? '—' : getMostActiveType(logs)}</p>
+        </div>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <div key={i} className="glass h-[48px] animate-shimmer rounded-xl" />)}</div>
-      ) : filtered.length === 0 ? (
-        <div className="glass p-16 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4"><span className="text-2xl">📜</span></div>
-          <p className="text-white font-medium text-lg mb-1">No activity yet</p>
-          <p className="text-[#5a5a70] text-[14px]">Logs appear here once tasks start executing.</p>
+        <div className="space-y-1">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex items-center gap-4 py-2.5 px-3">
+              <div className="w-20 h-3 bg-[#1E1E2E] rounded animate-pulse" />
+              <div className="w-24 h-3 bg-[#1E1E2E] rounded animate-pulse" />
+              <div className="flex-1 h-3 bg-[#1E1E2E] rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="card p-16 text-center">
+          <Activity className="w-12 h-12 mx-auto text-indigo-500/30 mb-4" />
+          <p className="text-[#F1F5F9] text-lg font-medium mb-1">No executions yet</p>
+          <p className="text-[#94A3B8] text-sm">Tasks will appear here as ElizClaw runs them.</p>
         </div>
       ) : (
-        <div className="glass overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="pb-3.5 px-5 text-[12px] font-medium text-[#5a5a70] uppercase tracking-wider">Status</th>
-                  <th className="pb-3.5 px-5 text-[12px] font-medium text-[#5a5a70] uppercase tracking-wider">Task</th>
-                  <th className="pb-3.5 px-5 text-[12px] font-medium text-[#5a5a70] uppercase tracking-wider">Type</th>
-                  <th className="pb-3.5 px-5 text-[12px] font-medium text-[#5a5a70] uppercase tracking-wider">Duration</th>
-                  <th className="pb-3.5 px-5 text-[12px] font-medium text-[#5a5a70] uppercase tracking-wider">Executed At</th>
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-[#1E1E2E]">
+                <th className="text-left py-2.5 px-4 text-[#94A3B8] font-medium text-[11px] uppercase tracking-wider">Time</th>
+                <th className="text-left py-2.5 px-4 text-[#94A3B8] font-medium text-[11px] uppercase tracking-wider">Type</th>
+                <th className="text-left py-2.5 px-4 text-[#94A3B8] font-medium text-[11px] uppercase tracking-wider">Target</th>
+                <th className="text-left py-2.5 px-4 text-[#94A3B8] font-medium text-[11px] uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log, i) => (
+                <tr key={i} className={`border-b border-[#1E1E2E]/50 hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}>
+                  <td className="py-2 px-4 font-mono text-[#94A3B8] text-[11px]">
+                    {log.executed_at ? new Date(log.executed_at).toLocaleString() : '—'}
+                  </td>
+                  <td className="py-2 px-4">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeColors[log.task_type] || 'text-[#94A3B8] bg-white/[0.04] border-[#1E1E2E]'}`}>
+                      {log.task_type || 'unknown'}
+                    </span>
+                  </td>
+                  <td className="py-2 px-4 text-[#E2E8F0] truncate max-w-[200px]" title={log.output}>
+                    {log.task_name || log.output?.substring(0, 40) || '—'}
+                  </td>
+                  <td className="py-2 px-4">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                      log.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      log.status === 'failed' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {log.status === 'success' ? 'OK' : log.status === 'failed' ? 'FAIL' : 'RUN'}
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((log, i) => (
-                  <tr key={log.id || i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white ${
-                          log.status === 'success' ? 'bg-emerald-500/20' : log.status === 'failed' ? 'bg-rose-500/20' : log.status === 'running' ? 'bg-violet-500/20' : 'bg-amber-500/20'
-                        }`}>
-                          {icons[log.status] || '·'}
-                        </div>
-                        <span className={`badge ${badgeClass[log.status] || 'badge-violet'}`}>{log.status}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-5 text-[14px] text-[#d4d4de] group-hover:text-white transition-colors">{log.task_name || `Task #${log.task_id}`}</td>
-                    <td className="py-3.5 px-5 text-[14px] text-[#5a5a70]">{log.task_type || '—'}</td>
-                    <td className="py-3.5 px-5 text-[14px] text-[#5a5a70] tabular-nums">{log.duration_ms ? `${(log.duration_ms / 1000).toFixed(1)}s` : '—'}</td>
-                    <td className="py-3.5 px-5 text-[14px] text-[#5a5a70] tabular-nums">{new Date(log.executed_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Latest Output */}
-      {filtered.length > 0 && filtered[0]?.output && (
-        <div className="glass p-5">
-          <h3 className="text-[13px] font-medium text-[#5a5a70] mb-3 uppercase tracking-wider">Latest Output</h3>
-          <pre className="bg-black/30 border border-white/[0.06] rounded-xl p-4 text-[13px] text-[#a1a1b5] overflow-auto max-h-40 whitespace-pre-wrap font-mono leading-relaxed">
-            {filtered[0].output.substring(0, 1500)}
-          </pre>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
+}
+
+function getMostActiveType(logs: any[]): string {
+  if (!logs.length) return '—';
+  const counts: Record<string, number> = {};
+  logs.forEach(l => { const t = l.task_type || 'unknown'; counts[t] = (counts[t] || 0) + 1; });
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return entries.length > 0 ? entries[0][0].replace(/_/g, ' ') : '—';
 }

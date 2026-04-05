@@ -6,6 +6,8 @@ This file gives you the fastest path to evaluating ElizClaw. Everything you need
 
 [Nosana deployment URL — to be added after deployment]
 
+Screenshot: see README.md Screenshots section
+
 ## What Makes This Different
 
 After researching 5,400+ projects via Colosseum Copilot, we identified that the DeFi execution space is saturated (270+ projects doing swapping, trading, portfolio management). ElizClaw focuses on the unsolved gap: **continuous monitoring and on-chain intelligence**. It watches your portfolio, tracks whale wallets, aggregates market signals — and only tells you what matters.

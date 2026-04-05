@@ -1,66 +1,58 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ListTodo, ScrollText, Settings, Sparkles } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Activity, Settings } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: Home },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tasks', label: 'Tasks', icon: ListTodo },
-  { href: '/logs', label: 'Activity', icon: ScrollText },
+  { href: '/logs', label: 'Activity', icon: Activity },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#0a0a10]/80 backdrop-blur-2xl border-r border-white/[0.06] p-6 flex flex-col z-50">
+    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-[#0A0A0F] border-r border-[#1E1E2E] p-5 flex flex-col z-50">
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-10 px-2">
-        <div className="relative">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#0a0a10]">
-            <div className="absolute inset-0 bg-emerald-400 rounded-full animate-pulse-ring" />
-          </div>
+      <div className="mb-8 px-1">
+        <div className="flex items-center gap-0.5 mb-1">
+          <span className="text-indigo-400 font-black tracking-tighter text-lg">⟋⟋⟋</span>
+          <span className="font-light text-slate-300 text-lg">ELIZ</span>
+          <span className="font-black text-indigo-400 text-lg">CLAW</span>
         </div>
-        <div>
-          <h1 className="text-lg font-bold gradient-text">ElizClaw</h1>
-          <p className="text-[11px] text-[#5a5a70] tracking-wide uppercase">Agent</p>
-        </div>
+        <p className="text-[10px] text-[#94A3B8] tracking-wider uppercase">on-chain intelligence · always watching</p>
       </div>
 
       {/* Nav */}
-      <nav className="space-y-1.5 flex-1">
+      <nav className="space-y-1 flex-1">
         {navItems.map(item => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-300 ${
-                isActive
-                  ? 'bg-violet-500/10 text-violet-400 shadow-[inset_0_0_20px_rgba(139,92,246,0.1)]'
-                  : 'text-[#71717a] hover:text-white hover:bg-white/[0.04]'
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-[14px] font-medium ${
+                isActive ? 'nav-active' : 'nav-inactive'
               }`}
             >
-              <item.icon className={`w-[18px] h-[18px] transition-all duration-300 ${isActive ? 'text-violet-400' : 'text-[#5a5a70] group-hover:text-[#a1a1b5]'}`} />
-              <span className="font-medium text-[14px]">{item.label}</span>
-              {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.6)]" />}
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="pt-5 border-t border-white/[0.06]">
-        <div className="glass p-3.5">
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
-            <span className="text-xs font-medium text-[#a1a1b5]">Agent Running</span>
-          </div>
-          <div className="w-full bg-white/[0.06] rounded-full h-1.5">
-            <div className="bg-gradient-to-r from-violet-500 to-purple-500 h-1.5 rounded-full w-3/4 shadow-[0_0_8px_rgba(139,92,246,0.4)]" />
+      {/* Bottom status */}
+      <div className="pt-4 border-t border-[#1E1E2E]">
+        <div className="flex items-center gap-2 px-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <div>
+            <p className="text-[12px] font-medium text-[#F1F5F9]">Agent Active</p>
+            <p className="text-[10px] text-[#94A3B8]">Nosana GPU Network</p>
           </div>
         </div>
       </div>

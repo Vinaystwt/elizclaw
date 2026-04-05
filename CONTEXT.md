@@ -216,16 +216,30 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **OpenClaw Alignment + Hero Statement**: Top-of-README hero section with OpenClaw ethos framing + tech stack tagline.
 - **JUDGE_GUIDE.md**: 5-step evaluation path, scoring notes for all 5 criteria, test commands.
 - **CONTRIBUTING.md**: How to add actions/providers/evaluators, code style, testing instructions.
-- **README fully rewritten**: Hero statement → Features → Mermaid → How It Works → Architecture Decisions → Usage → Config → Plugins → Code Structure → Docker → Nosana → Tech Stack.
+- **README fully rewritten**: Hero statement → Screenshots → Features → Mermaid → How It Works → Architecture Decisions → Usage → Config → Plugins → Code Structure → Docker → Nosana → Tech Stack.
+- **Screenshots section added to README**: 4 production screenshots (dashboard, tasks, activity log, settings) with captions.
 - **Helius signup guide removed** — moved to WAITING block for Nosana phase.
-- **Zod validation schemas**: Created `src/plugins/utils/schemas.ts` with 10 schemas (CreateTaskInput, MonitorPriceInput, WalletTrackerInput, WhaleWatcherInput, WebScrapeInput, ApiCallInput, SignalMonitorInput, AgentReportInput, PredictionMarketInput). Integrated into monitorPrice.ts, walletTracker.ts, webScrape.ts.
-- **Global error handler**: Created `src/lib/error-handler.ts` with `AppError` class + `handleError()`. Sanitizes all errors, never exposes stack traces. Registered as global `uncaughtException` / `unhandledRejection` handlers.
-- **Structured logging with pino**: Created `src/lib/logger.ts` — pino with pino-pretty in dev, raw JSON in production. Scheduler loop uses structured JSON logging for Nosana Docker log aggregation.
-- **CORS + rate limiting**: `express-rate-limit` on `/api/chat` (20 req/min). CORS headers on all dashboard routes with OPTIONS preflight handling.
-- **p-queue concurrency**: Added p-queue with `concurrency: 2` to scheduler loop. Prevents resource exhaustion, max 2 simultaneous task executions.
-- **Unit tests**: 9 passing tests across `http.test.ts` (4 tests) and `store.test.ts` (5 tests). Added `"test": "bun test"` to package.json.
-- **Chart.js removed**: Cleaned unused dependency replaced by SVG sparklines in Phase 2.
-- **Wallet Narrative**: Algorithmic portfolio analysis in walletTracker.ts — concentration %, risk profile, stablecoin assessment. Displayed as "Analyst Reading" card below raw data.
+
+### Session 10: Phase 5 — Frontend & Presentation
+- **Global styles redesign**: `#0A0A0F` background, subtle dot grid pattern (`body::before`, 0.6 opacity), custom indigo scrollbar, new `.card` component system.
+- **Sidebar redesign**: New logo mark (`⟋⟋⟋ ELIZCLAW`), lucide icons, indigo active state, "Agent Active · Nosana GPU Network" footer.
+- **Dashboard redesign**: Live clock, 4 stat cards with accent borders, chat (60%) + activity (40%) grid, whale timeline, ambient "WATCHING" watermark.
+- **ChatWindow redesign**: Agent prefix "ELIZCLAW", user/agent bubble distinction, welcome state with 3 clickable prompt chips, subtle footer text.
+- **ActivityFeed redesign**: Type-colored icons per action, status badges (OK/FAIL/RUN), SVG sparklines for price data, clean empty/loading/error states.
+- **WhaleTimeline restyled**: IN=emerald left border, OUT=red left border, addresses in `font-mono text-indigo-300`.
+- **TaskCard redesign**: Left border by status (active=indigo, completed=emerald, failed=red, running=amber pulse).
+- **Tasks page redesign**: Filter pills, export/import buttons, clean empty state with ListTodo icon.
+- **Logs page redesign**: Table layout with colored type badges, alternating rows, stats cards, proper empty state with Activity icon.
+- **Settings page redesign**: Grouped sections (Agent Config, Appearance, About), theme swatches, localStorage persistence.
+- **StatCard redesign**: Icon in dark square, value in large monospace, accent left border.
+- **ErrorBoundary component**: Wraps entire layout for graceful error handling.
+- **4 production screenshots** captured and saved to `frontend/screenshots/`: 01-dashboard-final.png, 02-tasks-final.png, 03-activity-final.png, 04-settings-final.png.
+- **Dot grid background**: 32px grid at 0.6 opacity on `#0A0A0F` — visible but subtle.
+- **WATCHING watermark**: `text-[120px] font-black text-indigo-500/[0.08]` in top-right — subtle design signature.
+- **Chat empty space**: Filled with `text-[10px] text-[#1E1E2E] font-mono` reading "Monitoring 24/7 · Powered by Qwen3.5-27B · Deployed on Nosana".
+- **reactStrictMode: false**: Suppressed Next.js dev error overlay.
+
+### Session 11: Phase 3 — Technical Hardening
 - **Whale Alert Timeline**: New WhaleTimeline.tsx component on dashboard. Color-coded directional cards (IN=green, OUT=red), wallet truncation, relative timestamps, skeleton loading, intentional empty state.
 - **Smart Money Tracker**: Cross-references wallet holdings with whale watch events in store.json. Shows "Smart Money" section when overlap detected.
 - **Narrative Alert**: monitorPrice.ts appends CoinGecko trending context when price threshold triggered. Uses Promise.race with 3s timeout — alert never blocks on signal data.

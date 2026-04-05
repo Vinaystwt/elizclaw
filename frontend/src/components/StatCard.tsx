@@ -1,26 +1,30 @@
-const gradients: Record<string, string> = {
-  violet: 'from-violet-500/20 to-purple-500/20 border-violet-500/10',
-  cyan: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/10',
-  green: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/10',
-  amber: 'from-amber-500/20 to-orange-500/20 border-amber-500/10',
-};
-const iconBgs: Record<string, string> = {
-  violet: 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30',
-  cyan: 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30',
-  green: 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30',
-  amber: 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30',
+/**
+ * StatCard — dashboard metric with icon, label, value, and optional trend.
+ */
+const accentBorder: Record<string, string> = {
+  indigo: 'border-l-[3px] border-l-indigo-500',
+  cyan: 'border-l-[3px] border-l-cyan-500',
+  emerald: 'border-l-[3px] border-l-emerald-500',
+  amber: 'border-l-[3px] border-l-amber-500',
 };
 
-export function StatCard({ icon, label, value, color = 'violet' }: any) {
+export function StatCard({ icon, label, value, accent = 'indigo' }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  accent?: string;
+}) {
   return (
-    <div className={`glass glass-hover bg-gradient-to-br ${gradients[color]} p-5 cursor-default group`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBgs[color]} group-hover:scale-110 transition-transform duration-300`}>
+    <div className={`card ${accentBorder[accent] || accentBorder.indigo}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-7 h-7 rounded-lg bg-[#0A0A0F] border border-[#1E1E2E] flex items-center justify-center">
           {icon}
         </div>
-        <span className="text-[11px] font-medium text-[#5a5a70] uppercase tracking-wider">{label}</span>
+        <span className="text-xs text-[#94A3B8] font-medium">{label}</span>
       </div>
-      <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+      <div className="text-2xl font-bold font-mono text-[#F1F5F9] tracking-tight">
+        {value}
+      </div>
     </div>
   );
 }

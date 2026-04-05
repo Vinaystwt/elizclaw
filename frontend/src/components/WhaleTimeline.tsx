@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * WhaleTimeline — visual timeline of whale wallet movements.
- * Reads whale watch events from the logs API and renders as
- * color-coded cards with directional indicators.
+ * Restyled to match design system: IN=emerald left border, OUT=red left border.
  */
 
 interface WhaleEvent {
@@ -13,7 +12,6 @@ interface WhaleEvent {
   amount: number;
   coin: string;
   executed_at: string;
-  task_name?: string;
 }
 
 export function WhaleTimeline() {
@@ -32,7 +30,6 @@ export function WhaleTimeline() {
             amount: extractAmount(l.output),
             coin: extractCoin(l.output),
             executed_at: l.executed_at,
-            task_name: l.task_name,
           }));
         setEvents(whaleLogs);
         setLoading(false);
@@ -55,11 +52,11 @@ export function WhaleTimeline() {
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         {[1, 2, 3].map(i => (
-          <div key={i} className="flex items-start gap-3 py-3 px-3">
-            <div className="w-7 h-7 rounded-lg bg-white/[0.04] animate-pulse" />
-            <div className="flex-1 h-4 bg-white/[0.04] rounded animate-pulse" />
+          <div key={i} className="flex items-start gap-3 py-2 px-2">
+            <div className="w-6 h-6 rounded bg-[#1E1E2E] animate-pulse" />
+            <div className="flex-1 h-3 bg-[#1E1E2E] rounded animate-pulse" />
           </div>
         ))}
       </div>
@@ -68,52 +65,46 @@ export function WhaleTimeline() {
 
   if (events.length === 0) {
     return (
-      <div className="py-8 text-center">
-        <div className="w-10 h-10 mx-auto rounded-xl bg-white/[0.04] flex items-center justify-center mb-3">
+      <div className="py-6 text-center">
+        <div className="w-10 h-10 mx-auto rounded-lg bg-[#0A0A0F] border border-[#1E1E2E] flex items-center justify-center mb-3">
           <span className="text-lg">🐋</span>
         </div>
-        <p className="text-[#5a5a70] text-[14px]">No whale movements detected.</p>
-        <p className="text-[#3a3a50] text-[12px] mt-1">Watching known wallets 24/7.</p>
+        <p className="text-[#94A3B8] text-[13px]">No whale movements detected.</p>
+        <p className="text-[#64748B] text-[11px] mt-0.5">Watching known wallets 24/7.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {events.map((evt, i) => (
         <div
           key={i}
-          className="group flex items-start gap-3 py-3 px-3 rounded-xl hover:bg-white/[0.03] transition-all duration-200 animate-slide-in"
+          className={`flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-white/[0.02] transition-all duration-200 animate-slide-in border-l-[3px] ${
+            evt.direction === 'IN' ? 'border-l-emerald-500' : 'border-l-red-500'
+          }`}
         >
-          {/* Direction indicator */}
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5 ${
+          <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${
             evt.direction === 'IN'
-              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-              : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+              ? 'bg-emerald-500/15 text-emerald-400'
+              : 'bg-red-500/15 text-red-400'
           }`}>
             {evt.direction === 'IN' ? '↓' : '↑'}
           </div>
-
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium text-[#d4d4de]">
-                {truncate(evt.wallet)}
-              </span>
-              <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
-                evt.direction === 'IN'
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-rose-500/10 text-rose-400'
+              <span className="text-[12px] font-mono text-indigo-300">{truncate(evt.wallet)}</span>
+              <span className={`text-[10px] font-semibold px-1 py-0.5 rounded ${
+                evt.direction === 'IN' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
               }`}>
                 {evt.direction}
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[12px] text-[#a1a1b5]">
+              <span className={`text-[11px] font-mono ${evt.direction === 'IN' ? 'text-emerald-400' : 'text-red-400'}`}>
                 {evt.coin} — ${evt.amount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-[#5a5a70]">
-                {ago(evt.executed_at)}
-              </span>
+              <span className="text-[10px] text-[#64748B]">{ago(evt.executed_at)}</span>
             </div>
           </div>
         </div>
