@@ -1,6 +1,8 @@
 import { Action, IAgentRuntime, Memory, State, elizaLogger } from "@elizaos/core";
 import { getStore, setStore } from "../store.ts";
 import { httpGet } from "../utils/http.ts";
+import fs from "fs";
+import path from "path";
 
 // Log startup warning about Helius API key
 if (!process.env.HELIUS_API_KEY) {
@@ -96,6 +98,88 @@ async function getSolPrice(): Promise<number> {
   return 0;
 }
 
+/**
+ * Cross-reference wallet holdings with whale watch data from store.json.
+ * If the user holds coins that whales are actively moving, provide context.
+ */
+function getSmartMoneyContext(balances: TokenBalance[]): string | null {
+  try {
+    const dataDir = process.env.DATA_DIR || path.join(__dirname, "../../data");
+    const storePath = path.join(dataDir, "store.json");
+
+    if (!fs.existsSync(storePath)) return null;
+    const raw = JSON.parse(fs.readFileSync(storePath, "utf8"));
+    const logs = (raw.LOGS || []);
+
+    // Find recent whale watcher events
+    const whaleLogs = logs.filter((l: any) => l.task_type === "whale_watcher");
+    if (!whaleLogs.length) return null;
+
+    // Extract coins mentioned in whale activity
+    const whaleCoins = new Set<string>();
+    whaleLogs.forEach((l: any) => {
+      const coin = (l.output || "").match(/\b(BTC|ETH|SOL|DOGE|ADA|AVAX|BNB|XRP)\b/i);
+      if (coin) whaleCoins.add(coin[1].toUpperCase());
+    });
+
+    // Find overlap with user's holdings
+    const overlap = balances.filter(b => whaleCoins.has(b.symbol.toUpperCase()));
+    if (!overlap.length) return null;
+
+    const coinNames = overlap.map(b => b.symbol).join(", ");
+    return `Whale activity detected for ${coinNames} in your portfolio. Recent large transfers suggest smart money is positioning in these assets — consider monitoring closely.`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate a narrative interpretation of a wallet's portfolio.
+ * Analyzes concentration, diversification, and risk profile from balance data.
+ */
+function generateWalletNarrative(balances: TokenBalance[], totalValue: number, solPrice: number): string {
+  if (!balances.length) return "No priced tokens to analyze.";
+
+  const priced = balances.filter(b => b.usdValue > 0);
+  if (!priced.length) return "Holdings detected but no price data available. Most tokens may be illiquid or unlisted.";
+
+  // Calculate concentration — what % is the largest holding?
+  const sorted = [...priced].sort((a, b) => b.usdValue - a.usdValue);
+  const topPct = (sorted[0].usdValue / totalValue * 100).toFixed(0);
+  const topSymbol = sorted[0].symbol;
+
+  // Count unique tokens
+  const uniqueCount = priced.length;
+
+  // Determine risk profile
+  let riskDesc = "";
+  if (Number(topPct) > 70) {
+    riskDesc = `highly concentrated — ${topPct}% in ${topSymbol}`;
+  } else if (Number(topPct) > 50) {
+    riskDesc = `moderately concentrated — ${topPct}% in ${topSymbol} with ${uniqueCount - 1} other token${uniqueCount > 2 ? 's' : ''}`;
+  } else if (uniqueCount > 5) {
+    riskDesc = `well-diversified across ${uniqueCount} tokens, top holding ${topSymbol} at ${topPct}%`;
+  } else {
+    riskDesc = `balanced — ${uniqueCount} tokens with ${topSymbol} leading at ${topPct}%`;
+  }
+
+  // Check for stablecoin presence
+  const stablecoins = priced.filter(b => /^(USDC|USDT|DAI|BUSD|PYUSD)$/i.test(b.symbol));
+  const stablePct = totalValue > 0 ? (stablecoins.reduce((s, b) => s + b.usdValue, 0) / totalValue * 100).toFixed(0) : "0";
+
+  // Second sentence: diversification insight
+  let secondSentence = "";
+  if (Number(stablePct) < 5 && uniqueCount <= 3) {
+    secondSentence = `No stablecoin buffer and only ${uniqueCount} position${uniqueCount > 1 ? 's' : ''} — this wallet is taking directional risk.`;
+  } else if (Number(stablePct) > 30) {
+    secondSentence = `Holding ${stablePct}% in stablecoins suggests a defensive posture or dry powder for an upcoming move.`;
+  } else {
+    secondSentence = `Portfolio shows ${uniqueCount} active position${uniqueCount > 1 ? 's' : ''} with ${Number(stablePct) > 0 ? `${stablePct}% stablecoin allocation` : 'no stablecoin hedge'}.`;
+  }
+
+  return `This wallet is ${riskDesc}. ${secondSentence}`;
+}
+
 export const walletTrackerAction: Action = {
   name: "WALLET_TRACKER",
   similes: ["CHECK_WALLET", "PORTFOLIO", "TRACK_WALLET", "BALANCE_CHECK"],
@@ -162,10 +246,20 @@ export const walletTrackerAction: Action = {
     }
     setStore("WALLETS", wallets);
 
+    // ── Generate wallet narrative ──
+    const narrative = generateWalletNarrative(balances, totalValue, solPrice);
+
+    // ── Smart Money context ──
+    const smartMoneyContext = getSmartMoneyContext(balances);
+
     let response = `📋 **Wallet: ${walletAddress.slice(0, 8)}...${walletAddress.slice(-4)}**\n`;
     response += `Total Value: **$${totalValue.toFixed(2)}**\n`;
     if (solPrice) response += `SOL Price: $${solPrice.toFixed(2)}\n\n`;
     response += `**Holdings:**\n${tokenList}`;
+    response += `\n\n💡 **Analyst Reading:**\n${narrative}`;
+    if (smartMoneyContext) {
+      response += `\n\n🐋 **Smart Money:**\n${smartMoneyContext}`;
+    }
     response += `\n\nWant me to set up alerts for this wallet? I can notify you on big moves.`;
 
     callback({ text: response });

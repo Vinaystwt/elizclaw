@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 /**
  * ActivityFeed — shows recent task executions with status indicators.
  * Auto-refreshes every 30 seconds to reflect new activity.
+ * Renders sparkline charts for price_monitor entries with 2+ data points.
  */
 
 const icons: Record<string, string> = { success: '✓', failed: '✕', running: '◌', skipped: '↷' };
@@ -13,6 +14,47 @@ const dotColors: Record<string, string> = {
   running: 'bg-violet-400 shadow-[0_0_6px_rgba(167,139,250,0.5)] animate-pulse',
   skipped: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]',
 };
+
+/**
+ * Sparkline — inline SVG mini-chart for price history.
+ */
+function Sparkline({ prices, width = 120, height = 32 }: { prices: number[]; width?: number; height?: number }) {
+  if (prices.length < 2) return null;
+
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+
+  const points = prices.map((p, i) => {
+    const x = (i / (prices.length - 1)) * width;
+    const y = height - ((p - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const lineColor = isUp ? '#34d399' : '#fb7185';
+  const fillColor = isUp ? 'rgba(52,211,153,0.1)' : 'rgba(251,113,133,0.1)';
+
+  // Area fill path
+  const areaPath = `M0,${height} L${points.split(' ')[0]} ${points.split(' ').map((p, i) => i === 0 ? '' : `L${p}`).join(' ')} L${width},${height} Z`;
+
+  return (
+    <svg width={width} height={height} className="mt-1.5 rounded" style={{ display: 'block' }}>
+      <path d={areaPath} fill={fillColor} />
+      <polyline points={points} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * Extract price data from log output text.
+ * Looks for patterns like "$98,450" or "BTC/USD: $98,450".
+ */
+function extractPrices(output: string): number[] {
+  const matches = output.match(/\$([\d,]+(?:\.\d+)?)/g);
+  if (!matches) return [];
+  return matches.map(m => parseFloat(m.replace(/[$,]/g, ''))).filter(n => !isNaN(n) && n > 0);
+}
 
 export function ActivityFeed() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -92,26 +134,31 @@ export function ActivityFeed() {
 
       {/* Activity list */}
       <div className="space-y-1">
-      {logs.map((log, i) => (
-        <div key={log.id || i} className="group flex items-center gap-3.5 py-3 px-3 rounded-xl hover:bg-white/[0.03] transition-all duration-200">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold text-white flex-shrink-0 ${dotColors[log.status] || dotColors.skipped}`}>
-            {icons[log.status] || '·'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-medium text-[#d4d4de] truncate group-hover:text-white transition-colors">
-              {log.task_name || log.task_type || 'Unnamed task'}
-            </p>
-            {log.output && (
-              <p className="text-[12px] text-[#5a5a70] truncate mt-0.5" title={log.output}>
-                {log.output.substring(0, 60)}
+      {logs.map((log, i) => {
+        const prices = log.type === 'price_monitor' ? extractPrices(log.output || '') : [];
+        return (
+          <div key={log.id || i} className="group flex items-start gap-3.5 py-3 px-3 rounded-xl hover:bg-white/[0.03] transition-all duration-200">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold text-white flex-shrink-0 mt-0.5 ${dotColors[log.status] || dotColors.skipped}`}>
+              {icons[log.status] || '·'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-medium text-[#d4d4de] truncate group-hover:text-white transition-colors">
+                {log.task_name || log.task_type || 'Unnamed task'}
               </p>
-            )}
+              {log.output && (
+                <p className="text-[12px] text-[#5a5a70] truncate mt-0.5" title={log.output}>
+                  {log.output.substring(0, 60)}
+                </p>
+              )}
+              {/* Sparkline for price_monitor logs with 2+ prices */}
+              {prices.length >= 2 && <Sparkline prices={prices} />}
+            </div>
+            <span className="text-[12px] text-[#5a5a70] whitespace-nowrap tabular-nums mt-0.5">
+              {ago(log.executed_at)}
+            </span>
           </div>
-          <span className="text-[12px] text-[#5a5a70] whitespace-nowrap tabular-nums">
-            {ago(log.executed_at)}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
     </div>
   );

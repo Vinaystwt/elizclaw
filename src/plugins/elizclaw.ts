@@ -8,6 +8,7 @@ import { predictionMarketAction } from "./actions/predictionMarket.ts";
 import { walletTrackerAction } from "./actions/walletTracker.ts";
 import { whaleWatcherAction } from "./actions/whaleWatcher.ts";
 import { signalMonitorAction } from "./actions/signalMonitor.ts";
+import { agentReportAction } from "./actions/agentReport.ts";
 import { tasksProvider } from "./providers/tasks.ts";
 import { memoryProvider } from "./providers/memory.ts";
 import { taskCompletionEvaluator } from "./evaluators/taskCompletion.ts";
@@ -35,6 +36,7 @@ export const elizclawPlugin: Plugin = {
     walletTrackerAction,
     whaleWatcherAction,
     signalMonitorAction,
+    agentReportAction,
   ],
   providers: [tasksProvider, memoryProvider],
   evaluators: [taskCompletionEvaluator],

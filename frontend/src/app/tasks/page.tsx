@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskCreator } from '@/components/TaskCreator';
+import { Download, Upload } from 'lucide-react';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -9,6 +10,8 @@ export default function TasksPage() {
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/tasks')
@@ -52,6 +55,54 @@ export default function TasksPage() {
     return true;
   });
 
+  // ── Export tasks as JSON file ──
+  const exportTasks = () => {
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `elizclaw-tasks-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Import tasks from JSON file ──
+  const importTasks = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.json')) {
+      setImportStatus('❌ Please select a .json file');
+      setTimeout(() => setImportStatus(null), 3000);
+      return;
+    }
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      if (!Array.isArray(imported)) {
+        setImportStatus('❌ Invalid format: expected an array of tasks');
+        setTimeout(() => setImportStatus(null), 3000);
+        return;
+      }
+      let successCount = 0;
+      for (const task of imported) {
+        if (!task.name || !task.type || !task.schedule) continue;
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(task),
+        });
+        if (res.ok) successCount++;
+      }
+      setImportStatus(`✅ Imported ${successCount}/${imported.length} tasks`);
+      setRefreshKey(k => k + 1);
+      setTimeout(() => setImportStatus(null), 4000);
+    } catch {
+      setImportStatus('❌ Failed to parse file — invalid JSON');
+      setTimeout(() => setImportStatus(null), 3000);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -59,8 +110,18 @@ export default function TasksPage() {
         <div>
           <h1 className="text-[32px] font-bold text-white tracking-tight">Tasks</h1>
           <p className="text-[#5a5a70] mt-1.5 text-[15px]">Manage your automation tasks and schedules.</p>
+          {importStatus && <p className="text-[13px] mt-2 text-emerald-400">{importStatus}</p>}
         </div>
-        <TaskCreator onCreated={() => setRefreshKey(k => k + 1)} />
+        <div className="flex items-center gap-2">
+          <button onClick={exportTasks} className="btn-ghost text-[13px] flex items-center gap-1.5" title="Export tasks as JSON">
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+          <button onClick={() => fileInputRef.current?.click()} className="btn-ghost text-[13px] flex items-center gap-1.5" title="Import tasks from JSON">
+            <Upload className="w-3.5 h-3.5" /> Import
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importTasks} />
+          <TaskCreator onCreated={() => setRefreshKey(k => k + 1)} />
+        </div>
       </div>
 
       {/* Filter pills */}

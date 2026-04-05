@@ -64,6 +64,9 @@ export const monitorPriceAction: Action = {
 
       if (price > threshold) {
         msg += `\n\n🔔 **Above your $${threshold.toLocaleString()} threshold!**`;
+        // Append market context from CoinGecko trending
+        const marketContext = await getMarketContext();
+        if (marketContext) msg += `\n${marketContext}`;
       } else {
         msg += `\n(Below $${threshold.toLocaleString()} — no alert triggered)`;
       }
@@ -80,3 +83,34 @@ export const monitorPriceAction: Action = {
     ],
   ],
 };
+
+/**
+ * Fetch lightweight market context for narrative alerts.
+ * Uses Promise.race with 3s timeout so it never blocks the price response.
+ * Returns a 1-sentence market context or null if unavailable.
+ */
+async function getMarketContext(): Promise<string | null> {
+  try {
+    const timeout = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 3000)
+    );
+
+    const fetchCtx = httpGet(
+      "https://api.coingecko.com/api/v3/search/trending"
+    );
+
+    const result = await Promise.race([fetchCtx, timeout]);
+    if (!result.ok || !result.data) return null;
+
+    const trending = (result.data as any)?.coins || [];
+    if (trending.length > 0) {
+      const top = trending[0]?.item;
+      if (top?.name) {
+        return `\nMarket context: ${top.name} is currently trending #1 on CoinGecko.`;
+      }
+    }
+    return null;
+  } catch {
+    return null; // Silent failure — alert still fires without context
+  }
+}

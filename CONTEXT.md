@@ -209,7 +209,17 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **JSDoc comments** on all 13 action/provider/evaluator files
 - **JSDoc comments** on utility functions in http.ts
 
-### Session 6: Phase 1 — Critical Infrastructure
+### Session 7: Phase 2 — Creative Differentiators
+- **Wallet Narrative**: Algorithmic portfolio analysis in walletTracker.ts — concentration %, risk profile, stablecoin assessment. Displayed as "Analyst Reading" card below raw data.
+- **Whale Alert Timeline**: New WhaleTimeline.tsx component on dashboard. Color-coded directional cards (IN=green, OUT=red), wallet truncation, relative timestamps, skeleton loading, intentional empty state.
+- **Smart Money Tracker**: Cross-references wallet holdings with whale watch events in store.json. Shows "Smart Money" section when overlap detected.
+- **Narrative Alert**: monitorPrice.ts appends CoinGecko trending context when price threshold triggered. Uses Promise.race with 3s timeout — alert never blocks on signal data.
+- **Agent Self-Report**: New AGENT_REPORT action (agentReport.ts). Reads execution history, calculates success rate, most-used feature, recent failures. Triggered by "how are you performing".
+- **Live Task Execution Status**: TaskCard.tsx shows running (amber spinner + ring), completed (green dot + timestamp), failed (red X + error message) states.
+- **SVG Sparklines**: ActivityFeed renders inline SVG mini-charts for price_monitor entries with 2+ price data points. Green/red based on trend direction. No Chart.js dependency needed.
+- **Export/Import Tasks**: Tasks page has Export (downloads .json) and Import (file upload, validates, batch POSTs) buttons with status feedback.
+- **Plugin update**: elizclaw.ts now registers 10 actions (added agentReportAction).
+- **Quick Commands trigger**: "How are you performing?" chip now maps to AGENT_REPORT action.
 - **Single-port Nosana architecture**: Added Express static middleware + API routes to DirectClient's Express app in `src/index.ts`. Frontend served on port 3000 alongside agent API. `output: 'export'` in next.config.mjs. Dockerfile updated for single-port. `start.mjs` skips frontend spawn in production.
 - **`/health` endpoint**: Returns `{status: "ok", uptime, tasksActive, version}` for Nosana stability scoring.
 - **Background task scheduler**: 60s polling loop in `start.mjs`. Reads store.json, checks due tasks, sends NL commands to agent, logs results. Makes autonomous scheduling actually true.

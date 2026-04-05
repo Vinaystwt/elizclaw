@@ -85,7 +85,7 @@ function triggerTask(task) {
 
   // Send the command to the agent via its message endpoint
   const agentUrl = `http://localhost:${process.env.SERVER_PORT || 3000}`;
-  const agentId = 'elizclaw';
+  const agentId = process.env.AGENT_ID || 'elizclaw';
   fetch(`${agentUrl}/${agentId}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { WhaleTimeline } from '@/components/WhaleTimeline';
 import { ChatWindow } from '@/components/ChatWindow';
 import { TaskCreator } from '@/components/TaskCreator';
 import { Zap, Activity, Clock, Bell, Sparkles, ArrowRight, RefreshCw } from 'lucide-react';
@@ -89,8 +90,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Whale Timeline */}
       <div className="glass p-6 animate-fade-up animate-fade-up-delay-3">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-[15px] font-semibold text-white flex items-center gap-2">
+            <span>🐋</span>
+            Whale Watch
+          </h2>
+          <button onClick={() => window.location.href = '/logs'} className="text-[12px] text-[#5a5a70] hover:text-violet-400 transition-colors flex items-center gap-1">
+            View all <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+        <WhaleTimeline />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="glass p-6 animate-fade-up animate-fade-up-delay-4">
         <h2 className="text-[15px] font-semibold text-white mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           {[
