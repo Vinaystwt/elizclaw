@@ -1,15 +1,14 @@
 import { Action, IAgentRuntime, Memory, State, elizaLogger } from "@elizaos/core";
 import { getStore, setStore } from "../store.ts";
 import { httpGet } from "../utils/http.ts";
+import { WalletTrackerInput } from "../utils/schemas.ts";
+import { logger } from "../../lib/logger.ts";
 import fs from "fs";
 import path from "path";
 
 // Log startup warning about Helius API key
 if (!process.env.HELIUS_API_KEY) {
-  console.warn(
-    "[walletTracker] No HELIUS_API_KEY set — wallet tracking using Jupiter fallback. " +
-    "Set HELIUS_API_KEY for full portfolio data."
-  );
+  logger.warn("No HELIUS_API_KEY set — wallet tracking using Jupiter fallback. Set HELIUS_API_KEY for full portfolio data.");
 }
 
 /**
@@ -61,7 +60,7 @@ async function fetchWalletBalances(walletAddress: string, apiKey?: string): Prom
         }));
       }
     } catch {
-      elizaLogger.warn("Helius API unavailable, trying Jupiter fallback");
+      logger.warn("Helius API unavailable, trying Jupiter fallback");
     }
   }
 
@@ -205,6 +204,13 @@ export const walletTrackerAction: Action = {
       callback({
         text: "Need a Solana wallet address to track. Paste the address or say 'track my wallet: <address>'.",
       });
+      return;
+    }
+
+    // Validate via zod
+    const validated = WalletTrackerInput.safeParse({ address: walletAddress });
+    if (!validated.success) {
+      callback({ text: `⚠️ Invalid wallet address: ${validated.error.errors[0].message}` });
       return;
     }
 

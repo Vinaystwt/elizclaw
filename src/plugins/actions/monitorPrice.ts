@@ -1,5 +1,6 @@
 import { Action, IAgentRuntime, Memory, State } from "@elizaos/core";
 import { httpGet } from "../utils/http.ts";
+import { MonitorPriceInput } from "../utils/schemas.ts";
 
 /**
  * Real-time price check with 24h change and optional threshold alerts.
@@ -24,6 +25,15 @@ export const monitorPriceAction: Action = {
 
     if (!coinMatch) {
       callback({ text: "Which coin? I support BTC, ETH, SOL, DOGE, ADA, AVAX, MATIC, BNB, XRP." });
+      return;
+    }
+
+    // Validate input via zod
+    const symbol = coinMatch[1].toUpperCase().substring(0, 4);
+    const threshold = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, "")) : undefined;
+    const validated = MonitorPriceInput.safeParse({ coin: coinMatch[1].toLowerCase(), threshold });
+    if (!validated.success) {
+      callback({ text: `⚠️ Invalid input: ${validated.error.errors[0].message}` });
       return;
     }
 

@@ -1,5 +1,6 @@
 import { Action, IAgentRuntime, Memory, State } from "@elizaos/core";
 import { httpGet } from "../utils/http.ts";
+import { WebScrapeInput } from "../utils/schemas.ts";
 
 /**
  * Guess a URL from common site names in natural language.
@@ -34,6 +35,13 @@ export const webScrapeAction: Action = {
 
     if (!url) {
       callback({ text: "Need a URL — paste one or tell me which site (HN, Reddit, TechCrunch, GitHub Trending)." });
+      return;
+    }
+
+    // Validate via zod
+    const validated = WebScrapeInput.safeParse({ url });
+    if (!validated.success) {
+      callback({ text: `⚠️ Invalid URL: ${validated.error.errors[0].message}` });
       return;
     }
 

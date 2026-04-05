@@ -10,10 +10,12 @@ import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import { createNodePlugin } from "@elizaos/plugin-node";
 import { solanaPlugin } from "@elizaos/plugin-solana";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import fs from "fs";
 import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
+import { handleError } from "./lib/error-handler.ts";
 import { initializeDbCache } from "./cache/index.ts";
 import { character } from "./character.ts";
 import { startChat } from "./chat/index.ts";
@@ -185,6 +187,27 @@ function attachDashboard(app: express.Application) {
   const isProduction = process.env.NODE_ENV === "production";
   const agentId = character.id || stringToUuid(character.name);
 
+  // ── Rate limiting on chat endpoint (most expensive — hits LLM) ──
+  const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests — please try again in a minute." },
+  });
+
+  // ── CORS headers for dashboard routes ──
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   // ── Health check ──
   app.get("/health", (_req: express.Request, res: express.Response) => {
     const store = readStore();
@@ -282,7 +305,7 @@ function attachDashboard(app: express.Application) {
   });
 
   // ── Chat proxy ──
-  app.post("/api/chat", express.json(), async (req: express.Request, res: express.Response) => {
+  app.post("/api/chat", chatLimiter, express.json(), async (req: express.Request, res: express.Response) => {
     try {
       const { message } = req.body;
       if (!message) return res.status(400).json({ error: "Message required" });
@@ -399,4 +422,15 @@ const startAgents = async () => {
 startAgents().catch((error) => {
   elizaLogger.error("Unhandled error in startAgents:", error);
   process.exit(1);
+});
+
+// ── Global error handlers ──
+process.on("uncaughtException", (err) => {
+  const msg = handleError(err);
+  elizaLogger.error(`[uncaughtException] ${msg}`);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const msg = handleError(reason);
+  elizaLogger.error(`[unhandledRejection] ${msg}`);
 });

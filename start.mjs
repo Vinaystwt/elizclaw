@@ -12,9 +12,31 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import PQueue from 'p-queue';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Structured logger for scheduler — JSON in production, readable in dev.
+ */
+function schedLog(level, msg, meta = {}) {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    component: "scheduler",
+    msg,
+    ...meta,
+  };
+  if (isProduction || level === 'error') {
+    // JSON output in production for Docker log aggregation
+    console.log(JSON.stringify(entry));
+  } else {
+    // Readable in development
+    const prefix = { info: 'ℹ', warn: '⚠', error: '✕' }[level] || '·';
+    console.log(`${prefix} [scheduler] ${msg}${Object.keys(meta).length ? ' ' + JSON.stringify(meta) : ''}`);
+  }
+}
 
 // ── Background Task Scheduler ──
 // Polls store.json every 60 seconds for due tasks and executes them.
@@ -48,6 +70,7 @@ function calcNext(schedule) {
 function triggerTask(task) {
   const { name, type, config } = task;
   console.log(`\n[scheduler] Executing task #${task.id}: ${name} (${type})`);
+  schedLog('info', `Executing task`, { taskId: task.id, name, type });
 
   // Mark task as running
   const store = readStore();
@@ -117,10 +140,10 @@ function triggerTask(task) {
         logStore.TASKS = updatedTasks;
       }
       writeStore(logStore);
-      console.log(`[scheduler] Task #${task.id} completed: ${name}`);
+      schedLog('info', `Task completed`, { taskId: task.id, name });
     })
     .catch(err => {
-      console.error(`[scheduler] Task #${task.id} failed:`, err.message);
+      schedLog('error', `Task failed`, { taskId: task.id, name, error: err.message });
       const logStore = readStore();
       const logs = logStore.LOGS || [];
       logs.push({ task_id: task.id, type, status: 'failed', output: err.message, executed_at: new Date().toISOString() });
@@ -138,18 +161,21 @@ function runScheduler() {
       const due = tasks.filter(t => new Date(t.next_run) <= now);
 
       if (due.length > 0) {
-        console.log(`[scheduler] Found ${due.length} due task(s) at ${now.toISOString()}`);
-        due.forEach(triggerTask);
+        schedLog('info', `Found due tasks`, { count: due.length });
+        due.forEach(task => {
+          taskQueue.add(() => triggerTask(task));
+        });
       }
     } catch (err) {
-      console.error('[scheduler] Error checking tasks:', err.message);
+      schedLog('error', `Error checking tasks`, { error: err.message });
     }
   }, 60_000); // Every 60 seconds
 }
 
 // Start the scheduler
+const taskQueue = new PQueue({ concurrency: 2 });
 runScheduler();
-console.log('[scheduler] Background task scheduler started — polling every 60s');
+schedLog('info', 'Background task scheduler started — polling every 60s, max 2 concurrent');
 
 // Start the ElizaOS agent
 const agent = spawn('node', [

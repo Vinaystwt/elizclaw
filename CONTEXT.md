@@ -209,7 +209,14 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **JSDoc comments** on all 13 action/provider/evaluator files
 - **JSDoc comments** on utility functions in http.ts
 
-### Session 7: Phase 2 — Creative Differentiators
+### Session 8: Phase 3 — Technical Hardening
+- **Zod validation schemas**: Created `src/plugins/utils/schemas.ts` with 10 schemas (CreateTaskInput, MonitorPriceInput, WalletTrackerInput, WhaleWatcherInput, WebScrapeInput, ApiCallInput, SignalMonitorInput, AgentReportInput, PredictionMarketInput). Integrated into monitorPrice.ts, walletTracker.ts, webScrape.ts.
+- **Global error handler**: Created `src/lib/error-handler.ts` with `AppError` class + `handleError()`. Sanitizes all errors, never exposes stack traces. Registered as global `uncaughtException` / `unhandledRejection` handlers.
+- **Structured logging with pino**: Created `src/lib/logger.ts` — pino with pino-pretty in dev, raw JSON in production. Scheduler loop uses structured JSON logging for Nosana Docker log aggregation.
+- **CORS + rate limiting**: `express-rate-limit` on `/api/chat` (20 req/min). CORS headers on all dashboard routes with OPTIONS preflight handling.
+- **p-queue concurrency**: Added p-queue with `concurrency: 2` to scheduler loop. Prevents resource exhaustion, max 2 simultaneous task executions.
+- **Unit tests**: 9 passing tests across `http.test.ts` (4 tests) and `store.test.ts` (5 tests). Added `"test": "bun test"` to package.json.
+- **Chart.js removed**: Cleaned unused dependency replaced by SVG sparklines in Phase 2.
 - **Wallet Narrative**: Algorithmic portfolio analysis in walletTracker.ts — concentration %, risk profile, stablecoin assessment. Displayed as "Analyst Reading" card below raw data.
 - **Whale Alert Timeline**: New WhaleTimeline.tsx component on dashboard. Color-coded directional cards (IN=green, OUT=red), wallet truncation, relative timestamps, skeleton loading, intentional empty state.
 - **Smart Money Tracker**: Cross-references wallet holdings with whale watch events in store.json. Shows "Smart Money" section when overlap detected.
