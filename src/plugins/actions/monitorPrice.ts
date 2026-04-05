@@ -46,7 +46,6 @@ export const monitorPriceAction: Action = {
     };
 
     const coinId = coinMap[coinMatch[1].toLowerCase()] || coinMatch[1].toLowerCase();
-    const symbol = coinMatch[1].toUpperCase().substring(0, 4);
 
     const result = await httpGet(
       `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`

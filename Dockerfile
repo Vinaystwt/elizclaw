@@ -1,49 +1,40 @@
-FROM oven/bun:1-slim AS builder
-
-# Install build deps
-RUN apt-get update && apt-get install -y git python3 make g++ && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    ln -s /usr/bin/python3 /usr/bin/python
-
+FROM oven/bun:1.2.5-slim AS builder
 WORKDIR /app
 
-# Install and build agent
 COPY package.json bun.lockb* ./
-COPY src ./src
-RUN bun install && bun run build
+RUN bun install
 
-# Build frontend as static export (output: 'export' in next.config.mjs)
+COPY src ./src
+COPY tsconfig.json ./
+RUN bun run build
+
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/bun.lockb* ./
 RUN bun install
-COPY frontend/ .
+COPY frontend ./
 RUN bun run build
 
-# ── Runtime image ──
-FROM oven/bun:1-slim
-
-RUN apt-get update && apt-get install -y git python3 curl && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+FROM oven/bun:1.2.5-slim
 WORKDIR /app
 
-# Copy agent runtime deps and build output
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY package.json bun.lockb* ./
+RUN bun install
+
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src ./src
-
-# Copy frontend static export
 COPY --from=builder /app/frontend/out ./frontend/out
+COPY src ./src
+COPY start.mjs ./
 
-# Create data directory for shared persistence
+RUN echo 'Bun.fetch("http://localhost:3000/health").then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))' > /app/healthcheck.js
 RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 ENV AGENT_URL=http://localhost:3000
 
-EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=10s \
+  --start-period=60s --retries=3 \
+  CMD bun run healthcheck.js || exit 1
 
-# Single process — agent serves both API and dashboard on port 3000
-CMD ["bun", "run", "/app/start.mjs"]
+EXPOSE 3000
+CMD ["bun", "run", "start.mjs"]

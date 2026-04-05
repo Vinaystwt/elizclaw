@@ -179,8 +179,7 @@ schedLog('info', 'Background task scheduler started — polling every 60s, max 2
 
 // Start the ElizaOS agent
 const agent = spawn('node', [
-  '--loader', 'ts-node/esm',
-  path.join(__dirname, 'src/index.ts')
+  path.join(__dirname, 'dist/index.js')
 ], {
   stdio: 'inherit',
   env: { ...process.env, DATA_DIR: process.env.DATA_DIR || '/app/data' },

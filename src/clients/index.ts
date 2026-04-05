@@ -1,44 +1,18 @@
-import { AutoClientInterface } from "@elizaos/client-auto";
-import { DiscordClientInterface } from "@elizaos/client-discord";
-import { TelegramClientInterface } from "@elizaos/client-telegram";
-import { TwitterClientInterface } from "@elizaos/client-twitter";
+/**
+ * Client initialization — returns an empty array.
+ *
+ * The DirectClient is started directly in src/index.ts.
+ * Other clients (Discord, Telegram, Twitter, Auto) are not used
+ * in this deployment and have been removed to avoid native
+ * compilation dependencies (e.g., @discordjs/opus requires Python).
+ */
 import { Character, IAgentRuntime } from "@elizaos/core";
 
 export async function initializeClients(
   character: Character,
   runtime: IAgentRuntime
 ) {
-  const clients = [];
-  const clientTypes = character.clients?.map((str) => str.toLowerCase()) || [];
-
-  if (clientTypes.includes("auto")) {
-    const autoClient = await AutoClientInterface.start(runtime);
-    if (autoClient) clients.push(autoClient);
-  }
-
-  if (clientTypes.includes("discord")) {
-    clients.push(await DiscordClientInterface.start(runtime));
-  }
-
-  if (clientTypes.includes("telegram")) {
-    const telegramClient = await TelegramClientInterface.start(runtime);
-    if (telegramClient) clients.push(telegramClient);
-  }
-
-  if (clientTypes.includes("twitter")) {
-    const twitterClients = await TwitterClientInterface.start(runtime);
-    clients.push(twitterClients);
-  }
-
-  if (character.plugins?.length > 0) {
-    for (const plugin of character.plugins) {
-      if (plugin.clients) {
-        for (const client of plugin.clients) {
-          clients.push(await client.start(runtime));
-        }
-      }
-    }
-  }
-
-  return clients;
+  // DirectClient is started separately in index.ts
+  // No additional clients needed for this deployment
+  return [];
 }

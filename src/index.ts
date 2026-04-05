@@ -8,7 +8,6 @@ import {
 } from "@elizaos/core";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { solanaPlugin } from "@elizaos/plugin-solana";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
@@ -60,8 +59,7 @@ export function createAgent(
     plugins: [
       bootstrapPlugin,
       nodePlugin,
-      character.settings?.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
-    ].filter(Boolean),
+    ],
     providers: [],
     actions: [],
     services: [],
@@ -305,7 +303,7 @@ function attachDashboard(app: express.Application) {
   });
 
   // ── Chat proxy ──
-  app.post("/api/chat", chatLimiter, express.json(), async (req: express.Request, res: express.Response) => {
+  app.post("/api/chat", express.json(), chatLimiter, async (req: any, res: any) => {
     try {
       const { message } = req.body;
       if (!message) return res.status(400).json({ error: "Message required" });

@@ -239,6 +239,17 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **Chat empty space**: Filled with `text-[10px] text-[#1E1E2E] font-mono` reading "Monitoring 24/7 · Powered by Qwen3.5-27B · Deployed on Nosana".
 - **reactStrictMode: false**: Suppressed Next.js dev error overlay.
 
+### Session 12: Docker Build + Nosana Deployment
+- **Removed all native dependencies**: `better-sqlite3`, `@elizaos/adapter-sqlite`, `@elizaos/plugin-solana`, `@elizaos/adapter-postgres`, `@elizaos/client-discord`, `@elizaos/client-telegram`, `@elizaos/client-twitter`, `@elizaos/client-auto`, `@elizaos/plugin-image-generation`, `@elizaos/plugin-starknet`, `amqplib`, `fs`, `net`, `path`, `url`, `readline` — all removed. Eliminates native compilation entirely.
+- **In-memory database adapter**: Replaced SQLite-based `database/index.ts` with `InMemoryDatabaseAdapter` implementing `IDatabaseAdapter`. No native deps, no file I/O. ElizaOS conversation memory is ephemeral — acceptable for hackathon on ephemeral compute.
+- **Clients simplified**: `clients/index.ts` returns empty array. `DirectClient` started directly in `index.ts`. Removes `@discordjs/opus` native dep chain.
+- **`trustedDependencies: []`** in package.json skips all install scripts.
+- **Build format**: ESM with `--external express --external express-rate-limit` — Express stays external, bundle is 71KB (not 1.2MB).
+- **Dockerfile rewritten**: 2-stage build. Builder: bun install + build agent + build frontend. Runtime: bun install (fast, no native deps), copy dist/ + frontend/out/ + start.mjs. HEALTHCHECK uses `bun run healthcheck.js` (no curl needed). Image: **691MB**.
+- **Health check**: `Bun.fetch("http://localhost:3000/health")` — returns `{"status":"ok","uptime":14.98,"tasksActive":0,"version":"1.0.0"}`.
+- **Docker image pushed**: `vinaystwt/elizclaw:latest` to Docker Hub. Digest: `sha256:1d82724fb42572ddaba2646375077e1c9046aaec13f76d239fb38b0ceb63164c`.
+- **Waiting for Nosana deployment URL** — Vinay deploying manually via deploy.nosana.com.
+
 ### Session 11: Phase 3 — Technical Hardening
 - **Whale Alert Timeline**: New WhaleTimeline.tsx component on dashboard. Color-coded directional cards (IN=green, OUT=red), wallet truncation, relative timestamps, skeleton loading, intentional empty state.
 - **Smart Money Tracker**: Cross-references wallet holdings with whale watch events in store.json. Shows "Smart Money" section when overlap detected.
