@@ -59,6 +59,13 @@ export function ChatWindow() {
     }
   };
 
+  const quickCommands = [
+    { label: 'Check BTC price', value: 'Check BTC price every morning and alert me if above $100k' },
+    { label: "What's happening?", value: "What's happening in the crypto market?" },
+    { label: 'Track wallet', value: 'Track wallet ' },
+    { label: 'How are you performing?', value: 'How are you performing?' },
+  ];
+
   return (
     <div className="flex flex-col h-[480px]">
       {/* Messages */}
@@ -100,6 +107,19 @@ export function ChatWindow() {
           </div>
         )}
         <div ref={endRef} />
+      </div>
+
+      {/* Quick Commands */}
+      <div className="flex gap-2 mb-2 flex-wrap">
+        {quickCommands.map((cmd) => (
+          <button
+            key={cmd.label}
+            onClick={() => setInput(cmd.value)}
+            className="px-3 py-1.5 text-[12px] rounded-lg bg-white/[0.04] border border-white/[0.08] text-[#a1a1b5] hover:bg-white/[0.08] hover:text-[#d4d4de] transition-all duration-200 whitespace-nowrap"
+          >
+            {cmd.label}
+          </button>
+        ))}
       </div>
 
       {/* Input */}

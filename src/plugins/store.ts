@@ -1,7 +1,7 @@
 /**
  * Simple JSON file-based persistence layer.
  * Stores tasks, logs, bets, and guesses in data/store.json.
- * Thread-safe via synchronous read/write (single-process assumption).
+ * Uses a write mutex to prevent concurrent write corruption.
  */
 import fs from "fs";
 import path from "path";
@@ -21,10 +21,17 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 /**
+ * Write mutex — prevents concurrent writes from corrupting store.json.
+ * When a write is in progress, subsequent writes queue up and execute sequentially.
+ */
+let writeLock = false;
+const writeQueue: Array<() => void> = [];
+
+/**
  * Read the entire store from disk.
  * Returns empty object if file doesn't exist or is corrupt.
  */
-function readStore(): Record<string, any> {
+function readStoreSync(): Record<string, any> {
   const storePath = path.join(DATA_DIR, "store.json");
   if (!fs.existsSync(storePath)) return {};
   try {
@@ -36,9 +43,10 @@ function readStore(): Record<string, any> {
 }
 
 /**
- * Write the entire store to disk atomically.
+ * Write the entire store to disk.
+ * Uses mutex to prevent concurrent corruption.
  */
-function writeStore(store: Record<string, any>) {
+function writeStoreSync(store: Record<string, any>) {
   const storePath = path.join(DATA_DIR, "store.json");
   try {
     fs.writeFileSync(storePath, JSON.stringify(store, null, 2), "utf8");
@@ -48,34 +56,56 @@ function writeStore(store: Record<string, any>) {
 }
 
 /**
+ * Acquire the write lock, or queue the write.
+ */
+function withWriteLock(fn: () => void) {
+  if (!writeLock) {
+    writeLock = true;
+    fn();
+    writeLock = false;
+    // Flush queue
+    const next = writeQueue.shift();
+    if (next) withWriteLock(next);
+  } else {
+    writeQueue.push(fn);
+  }
+}
+
+/**
  * Get a value from the store by key.
  * Returns null if the key doesn't exist.
  */
 export function getStore<T = any>(key: string): T | null {
-  const store = readStore();
+  const store = readStoreSync();
   return store[key] ?? null;
 }
 
 /**
  * Set a value in the store by key.
+ * Thread-safe: uses write mutex to prevent corruption.
  */
 export function setStore(key: string, value: any) {
-  const store = readStore();
-  store[key] = value;
-  writeStore(store);
+  withWriteLock(() => {
+    const store = readStoreSync();
+    store[key] = value;
+    writeStoreSync(store);
+  });
 }
 
 /**
  * Append an item to a named array in the store.
  * Creates the array if it doesn't exist.
+ * Thread-safe: uses write mutex to prevent corruption.
  */
 export function appendToArray(key: string, item: any) {
-  const store = readStore();
-  if (!store[key]) store[key] = [];
-  if (!Array.isArray(store[key])) {
-    console.warn(`[store] Key '${key}' is not an array, overwriting.`);
-    store[key] = [];
-  }
-  store[key].push(item);
-  writeStore(store);
+  withWriteLock(() => {
+    const store = readStoreSync();
+    if (!store[key]) store[key] = [];
+    if (!Array.isArray(store[key])) {
+      console.warn(`[store] Key '${key}' is not an array, overwriting.`);
+      store[key] = [];
+    }
+    store[key].push(item);
+    writeStoreSync(store);
+  });
 }

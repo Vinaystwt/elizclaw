@@ -12,9 +12,9 @@ COPY package.json bun.lockb* ./
 COPY src ./src
 RUN bun install && bun run build
 
-# Install and build frontend
+# Build frontend as static export (output: 'export' in next.config.mjs)
 WORKDIR /app/frontend
-COPY frontend/package.json ./
+COPY frontend/package.json frontend/bun.lockb* ./
 RUN bun install
 COPY frontend/ .
 RUN bun run build
@@ -22,7 +22,7 @@ RUN bun run build
 # ── Runtime image ──
 FROM oven/bun:1-slim
 
-RUN apt-get update && apt-get install -y git python3 && \
+RUN apt-get update && apt-get install -y git python3 curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -33,10 +33,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src ./src
 
-# Copy frontend build (standalone output)
-COPY --from=builder /app/frontend/.next/standalone ./frontend/
-COPY --from=builder /app/frontend/.next/static ./frontend/.next/static
-COPY --from=builder /app/frontend/public ./frontend/public
+# Copy frontend static export
+COPY --from=builder /app/frontend/out ./frontend/out
 
 # Create data directory for shared persistence
 RUN mkdir -p /app/data
@@ -45,8 +43,7 @@ ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 ENV AGENT_URL=http://localhost:3000
 
-EXPOSE 3000 3001
+EXPOSE 3000
 
-# Start both agent (port 3000) and frontend (port 3001)
-# Using bun's native process spawning for clean multi-process
+# Single process — agent serves both API and dashboard on port 3000
 CMD ["bun", "run", "/app/start.mjs"]

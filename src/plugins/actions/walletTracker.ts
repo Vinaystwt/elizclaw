@@ -2,6 +2,14 @@ import { Action, IAgentRuntime, Memory, State, elizaLogger } from "@elizaos/core
 import { getStore, setStore } from "../store.ts";
 import { httpGet } from "../utils/http.ts";
 
+// Log startup warning about Helius API key
+if (!process.env.HELIUS_API_KEY) {
+  console.warn(
+    "[walletTracker] No HELIUS_API_KEY set — wallet tracking using Jupiter fallback. " +
+    "Set HELIUS_API_KEY for full portfolio data."
+  );
+}
+
 /**
  * Wallet portfolio tracker — connects a Solana wallet and monitors its health.
  * Fetches token balances, portfolio value, and alerts on significant changes.

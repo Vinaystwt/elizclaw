@@ -77,7 +77,21 @@ export function ActivityFeed() {
   }
 
   return (
-    <div className="space-y-1">
+    <div>
+      {/* Header with live indicator */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[14px] font-semibold text-white">Recent Activity</h3>
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="text-[11px] text-emerald-400 font-medium">Live</span>
+        </div>
+      </div>
+
+      {/* Activity list */}
+      <div className="space-y-1">
       {logs.map((log, i) => (
         <div key={log.id || i} className="group flex items-center gap-3.5 py-3 px-3 rounded-xl hover:bg-white/[0.03] transition-all duration-200">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold text-white flex-shrink-0 ${dotColors[log.status] || dotColors.skipped}`}>
@@ -98,6 +112,7 @@ export function ActivityFeed() {
           </span>
         </div>
       ))}
+    </div>
     </div>
   );
 }
