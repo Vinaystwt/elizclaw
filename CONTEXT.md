@@ -270,6 +270,18 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **HELIUS_API_KEY startup warning**: `console.warn` at module load if env var absent.
 - **Nosana job definition**: `nos_job_def/nosana_eliza_job_definition.json` created with correct config.
 
+### Session 13: Production Parity Fixes
+- **Frontend route audit completed**: Confirmed frontend calls `GET /api/tasks`, `POST /api/tasks`, `PUT /api/tasks`, `DELETE /api/tasks?id=...`, `GET /api/logs`, and `POST /api/chat`. Single-port server was missing `PUT /api/tasks` parity and did not parse JSON bodies globally.
+- **Express JSON parsing fixed**: Added `app.use(express.json())` in `attachDashboard()` so task creation and updates work in production instead of receiving empty `req.body`.
+- **Task update parity restored**: Added `PUT /api/tasks/:id` to the single-port server for production-safe task updates, and added compatibility `PUT /api/tasks` handling so the static-export frontend and local Next API routes still work without dynamic API paths.
+- **Task delete parity expanded**: Added `DELETE /api/tasks/:id` on the single-port server while retaining existing query-param delete support.
+- **Scheduler moved into built server runtime**: Created `src/lib/scheduler.ts` and started it from `src/index.ts` using the registered runtime `agentId`. This removes the production-only dependency on `start.mjs` for autonomous execution.
+- **Dynamic scheduler agent targeting**: Scheduler now uses the actual runtime `agentId` returned by ElizaOS instead of the previous hardcoded `'elizclaw'` fallback.
+- **start.mjs simplified**: Removed duplicate scheduler logic. It now acts only as a process manager that launches `dist/index.js` and, in local development, the frontend server.
+- **Whale watcher fixed**: `whaleWatcher.ts` now reads stored whale events from `WHALE_EVENTS` and whale watcher logs from `LOGS`, returns the most recent events, and shows a helpful “no whale movements recorded yet” message when the watchlist is active but no events exist.
+- **HTTP tests stabilized**: Rewrote `http.test.ts` to use mocked fetch responses instead of live network calls to CoinGecko/httpbin. Test suite is now deterministic and passes offline.
+- **Verification complete**: `bun test` passes, backend `bun run build` passes, frontend `bun run build` passes with `output: 'export'`.
+
 ---
 
 ## 6. CURRENT STATUS
@@ -277,10 +289,10 @@ Updated character.ts with new capabilities, post examples, and message examples.
 ### What Works ✅
 - **Single-port architecture**: Agent serves both API and dashboard on port 3000 in production. Express static middleware + `/api/*` routes + `/health` on DirectClient's Express app. Next.js `output: 'export'` for static build.
 - **Dual-port local dev**: docker-compose still runs agent (3000) + frontend (3001) — unchanged development workflow.
-- **Background task scheduler**: `setInterval` in `start.mjs` polls every 60s for due tasks, sends natural language commands to agent, logs results, updates next_run. Core value proposition is now true.
+- **Background task scheduler**: Scheduler now starts inside the built agent runtime in `src/index.ts` via `src/lib/scheduler.ts`, polls every 60s for due tasks, sends natural language commands to the registered runtime `agentId`, logs results, and updates `next_run`.
 - **Frontend**: Builds clean, all 4 pages functional, API routes work standalone
 - **Chat**: Proxies to agent on port 3000, falls back to simulated responses if offline. Quick Commands panel with 4 preset prompts.
-- **Tasks**: Full CRUD via `/api/tasks`, reads/writes `data/store.json`
+- **Tasks**: Full CRUD via `/api/tasks`, plus production update/delete support on `/api/tasks/:id`, reads/writes `data/store.json`
 - **Logs**: Reads logs + stats from `data/store.json`, auto-refreshes. Live indicator badge (pulsing green dot).
 - **Actions**: 9 actions in elizclaw plugin + 1 in priceGuess plugin = 10 total
 - **Providers**: 3 context providers (tasks, memory, priceGuess)

@@ -15,6 +15,7 @@ import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import { handleError } from "./lib/error-handler.ts";
+import { startScheduler } from "./lib/scheduler.ts";
 import { initializeDbCache } from "./cache/index.ts";
 import { character } from "./character.ts";
 import { startChat } from "./chat/index.ts";
@@ -181,9 +182,8 @@ function calcNextRun(schedule: string): Date | null {
  *   POST /api/chat        — proxy chat messages to agent message endpoint
  *   GET  /*               — static files (Next.js export output)
  */
-function attachDashboard(app: express.Application) {
+function attachDashboard(app: express.Application, agentId: string) {
   const isProduction = process.env.NODE_ENV === "production";
-  const agentId = character.id || stringToUuid(character.name);
 
   // ── Rate limiting on chat endpoint (most expensive — hits LLM) ──
   const chatLimiter = rateLimit({
@@ -197,7 +197,7 @@ function attachDashboard(app: express.Application) {
   // ── CORS headers for dashboard routes ──
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") {
       res.sendStatus(204);
@@ -205,6 +205,7 @@ function attachDashboard(app: express.Application) {
     }
     next();
   });
+  app.use(express.json());
 
   // ── Health check ──
   app.get("/health", (_req: express.Request, res: express.Response) => {
@@ -264,6 +265,89 @@ function attachDashboard(app: express.Application) {
   app.delete("/api/tasks", (req: express.Request, res: express.Response) => {
     try {
       const id = parseInt((req.query.id as string) || "0");
+      if (!id) return res.status(400).json({ error: "ID required" });
+      const store = readStore();
+      store.TASKS = (store.TASKS || []).filter((t: any) => t.id !== id);
+      writeStore(store);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put("/api/tasks/:id", (req: express.Request, res: express.Response) => {
+    try {
+      const id = parseInt(req.params.id || "0");
+      if (!id) return res.status(400).json({ error: "ID required" });
+
+      const { is_active, schedule, config } = req.body || {};
+      const store = readStore();
+      const tasks = store.TASKS || [];
+      const taskIndex = tasks.findIndex((task: any) => task.id === id);
+
+      if (taskIndex === -1) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const currentTask = tasks[taskIndex];
+      const updatedTask = {
+        ...currentTask,
+        ...(typeof is_active !== "undefined" ? { is_active } : {}),
+        ...(typeof schedule !== "undefined" ? {
+          schedule,
+          next_run: calcNextRun(schedule)?.toISOString() || null,
+        } : {}),
+        ...(typeof config !== "undefined" ? { config } : {}),
+        updated_at: new Date().toISOString(),
+      };
+
+      tasks[taskIndex] = updatedTask;
+      store.TASKS = tasks;
+      writeStore(store);
+      res.json({ task: updatedTask });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.put("/api/tasks", (req: express.Request, res: express.Response) => {
+    try {
+      const id = parseInt(req.body?.id || "0");
+      if (!id) return res.status(400).json({ error: "ID required" });
+
+      const { is_active, schedule, config } = req.body || {};
+      const store = readStore();
+      const tasks = store.TASKS || [];
+      const taskIndex = tasks.findIndex((task: any) => task.id === id);
+
+      if (taskIndex === -1) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const currentTask = tasks[taskIndex];
+      const updatedTask = {
+        ...currentTask,
+        ...(typeof is_active !== "undefined" ? { is_active } : {}),
+        ...(typeof schedule !== "undefined" ? {
+          schedule,
+          next_run: calcNextRun(schedule)?.toISOString() || null,
+        } : {}),
+        ...(typeof config !== "undefined" ? { config } : {}),
+        updated_at: new Date().toISOString(),
+      };
+
+      tasks[taskIndex] = updatedTask;
+      store.TASKS = tasks;
+      writeStore(store);
+      res.json({ task: updatedTask });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/tasks/:id", (req: express.Request, res: express.Response) => {
+    try {
+      const id = parseInt(req.params.id || "0");
       if (!id) return res.status(400).json({ error: "ID required" });
       const store = readStore();
       store.TASKS = (store.TASKS || []).filter((t: any) => t.id !== id);
@@ -376,6 +460,7 @@ const startAgents = async () => {
 
   let charactersArg = args.characters || args.character;
   let characters = [character];
+  const runtimes = [];
 
   if (charactersArg) {
     characters = await loadCharacters(charactersArg);
@@ -383,7 +468,8 @@ const startAgents = async () => {
 
   try {
     for (const character of characters) {
-      await startAgent(character, directClient as DirectClient);
+      const runtime = await startAgent(character, directClient as DirectClient);
+      runtimes.push(runtime);
     }
   } catch (error) {
     elizaLogger.error("Error starting agents:", error);
@@ -404,10 +490,18 @@ const startAgents = async () => {
     elizaLogger.log(`Server started on alternate port ${serverPort}`);
   }
 
+  const primaryRuntime = runtimes[0];
+  if (primaryRuntime?.agentId) {
+    startScheduler({ agentId: primaryRuntime.agentId, serverPort });
+  }
+
   // ── Attach dashboard static files + API routes for single-port deployment ──
   // This serves the Next.js static export and task/chat/logs APIs on the same
   // Express server that runs the agent. Enables Nosana deployment on a single port.
-  attachDashboard(directClient.app as express.Application);
+  attachDashboard(
+    directClient.app as express.Application,
+    primaryRuntime?.agentId || characters[0]?.name || "elizclaw",
+  );
 
   const isDaemonProcess = process.env.DAEMON_PROCESS === "true";
   if(!isDaemonProcess) {

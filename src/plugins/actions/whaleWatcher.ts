@@ -1,6 +1,5 @@
-import { Action, IAgentRuntime, Memory, State, elizaLogger } from "@elizaos/core";
-import { getStore, setStore, appendToArray } from "../store.ts";
-import { httpGet } from "../utils/http.ts";
+import { Action, IAgentRuntime, Memory, State } from "@elizaos/core";
+import { getStore, setStore } from "../store.ts";
 
 /**
  * Whale/smart money watcher — monitors notable Solana wallets for large transfers.
@@ -32,28 +31,48 @@ const KNOWN_WHALES: Record<string, string> = {
 };
 
 /**
- * Fetch recent large transfers for a wallet.
- * Uses Solscan public API as a data source.
+ * Fetch recent whale events for a wallet from store.json.
+ * Falls back to whale watcher logs if no dedicated event list exists yet.
  */
-async function fetchRecentTransfers(walletAddress: string): Promise<WhaleAlert[]> {
-  // For demo purposes — in production, use Helius/Solscan API with proper auth
-  // This returns the known whale label if the address matches
-  const label = KNOWN_WHALES[walletAddress] || `Wallet ${walletAddress.slice(0, 8)}`;
+async function fetchRecentTransfers(walletAddress?: string, limit: number = 5): Promise<WhaleAlert[]> {
+  const storedEvents = getStore<any[]>("WHALE_EVENTS") || [];
+  const logEvents = (getStore<any[]>("LOGS") || [])
+    .filter((entry: any) => entry.type === "whale_watcher" || entry.task_type === "whale_watcher")
+    .map((entry: any) => ({
+      wallet: entry.wallet || entry.address || "Unknown Wallet",
+      label: entry.label || entry.task_name || "Whale Watcher",
+      type: "transfer" as const,
+      amount: extractAmount(entry.output),
+      symbol: extractCoin(entry.output),
+      usdValue: extractAmount(entry.output),
+      txSignature: entry.txSignature || "stored-log",
+      timestamp: entry.executed_at || entry.timestamp || new Date().toISOString(),
+    }));
 
-  return [];
+  const events = [...storedEvents, ...logEvents]
+    .filter((event) => !walletAddress || event.wallet === walletAddress || event.label === walletAddress)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
+
+  return events;
 }
 
-/**
- * Get SOL price for USD valuation of whale movements.
- */
-async function getSolPrice(): Promise<number> {
-  const result = await httpGet(
-    "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
-  );
-  if (result.ok && result.data) {
-    return (result.data as any).solana?.usd ?? 0;
-  }
-  return 0;
+function extractAmount(output: string = ""): number {
+  const match = output.match(/\$?([\d,]+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1].replace(/,/g, "")) : 0;
+}
+
+function extractCoin(output: string = ""): string {
+  const match = output.match(/\b(BTC|ETH|SOL|DOGE|ADA|AVAX|BNB|XRP|USDC|USDT)\b/i);
+  return match ? match[1].toUpperCase() : "SOL";
+}
+
+function formatEvent(event: WhaleAlert): string {
+  const wallet = event.wallet.length > 16
+    ? `${event.wallet.slice(0, 8)}...${event.wallet.slice(-4)}`
+    : event.wallet;
+  const amountText = event.usdValue > 0 ? `$${event.usdValue.toLocaleString()}` : "size unknown";
+  return `• ${event.label || wallet} — ${event.symbol} ${amountText} (${wallet})`;
 }
 
 export const whaleWatcherAction: Action = {
@@ -103,9 +122,13 @@ export const whaleWatcherAction: Action = {
         watchers.push(entry);
       }
       setStore("WHALE_WATCHERS", watchers);
+      const recentEvents = await fetchRecentTransfers(address);
+      const recentSummary = recentEvents.length > 0
+        ? `\n\n**Recent movements:**\n${recentEvents.map(formatEvent).join("\n")}`
+        : `\n\nNo whale movements recorded yet. I am watching ${watchers.filter((w: any) => w.is_active).length} wallet${watchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.`;
 
       callback({
-        text: `🐋 **Now watching: ${label}**\n\nAddress: ${address.slice(0, 8)}...${address.slice(-4)}\nAlert threshold: $10,000+\n\nI'll notify you when this wallet makes a big move.`,
+        text: `🐋 **Now watching: ${label}**\n\nAddress: ${address.slice(0, 8)}...${address.slice(-4)}\nAlert threshold: $10,000+\n\nI'll notify you when this wallet makes a big move.${recentSummary}`,
       });
       return;
     }
@@ -113,11 +136,19 @@ export const whaleWatcherAction: Action = {
     // No address provided — show status
     const watchers = getStore<any[]>("WHALE_WATCHERS") || [];
     const activeWatchers = watchers.filter((w: any) => w.is_active);
+    const recentEvents = await fetchRecentTransfers(undefined, 5);
 
     let response = `🐋 **Whale Watcher**\n\n`;
     response += `Currently tracking ${activeWatchers.length} wallet(s).\n\n`;
 
+    if (recentEvents.length > 0) {
+      response += `**Recent whale movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n`;
+    } else if (activeWatchers.length > 0) {
+      response += `No whale movements recorded yet. I am watching ${activeWatchers.length} wallet${activeWatchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.\n\n`;
+    }
+
     if (activeWatchers.length > 0) {
+      response += `**Active watchlist:**\n`;
       response += activeWatchers
         .map((w: any) => `• ${w.label} — alert on >$${(w.threshold || 10000).toLocaleString()}`)
         .join("\n");

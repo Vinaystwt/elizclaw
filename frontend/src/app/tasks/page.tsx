@@ -30,7 +30,11 @@ export default function TasksPage() {
   const handleToggle = async (task: any) => {
     try {
       const updated = { ...task, is_active: task.is_active ? 0 : 1 };
-      await fetch('/api/tasks', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) });
+      await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: task.id, is_active: updated.is_active, schedule: updated.schedule, config: updated.config }),
+      });
       setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
     } catch { console.error('Failed to toggle task'); }
   };
