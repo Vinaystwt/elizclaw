@@ -26,6 +26,7 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
+import { fetchCoinQuote, coinMap } from "./plugins/actions/watchlist.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,6 +166,22 @@ function calcNextRun(schedule: string): Date | null {
     return n;
   }
   return new Date(now.getTime() + 3600000);
+}
+
+async function refreshWatchlistItems(items: any[]) {
+  const refreshed = await Promise.all(items.map(async (item) => {
+    const quote = await fetchCoinQuote(item.symbol || item.coin);
+    if (!quote) return item;
+    return {
+      ...item,
+      coin: quote.coin,
+      symbol: quote.symbol,
+      currentPrice: quote.currentPrice,
+      change24h: quote.change24h,
+    };
+  }));
+
+  return refreshed;
 }
 
 /**
@@ -384,6 +401,119 @@ function attachDashboard(app: express.Application, agentId: string) {
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  app.get("/api/digest", (_req: express.Request, res: express.Response) => {
+    try {
+      const digest = (readStore().DAILY_BRIEFS || [])[0] || null;
+      res.json({ digest });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/report", (_req: express.Request, res: express.Response) => {
+    try {
+      const report = (readStore().AGENT_REPORTS || [])[0] || null;
+      res.json({ report });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/watchlist", async (_req: express.Request, res: express.Response) => {
+    try {
+      const store = readStore();
+      const watchlist = store.WATCHLIST || [];
+      const refreshed = await refreshWatchlistItems(watchlist);
+      store.WATCHLIST = refreshed;
+      writeStore(store);
+      res.json({ watchlist: refreshed });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/watchlist", async (req: express.Request, res: express.Response) => {
+    try {
+      const coin = (req.body?.coin || "").toString().trim();
+      if (!coin) return res.status(400).json({ error: "coin required" });
+
+      const quote = await fetchCoinQuote(coin);
+      if (!quote) return res.status(404).json({ error: "Unsupported coin" });
+
+      const store = readStore();
+      const watchlist = store.WATCHLIST || [];
+      const existingIndex = watchlist.findIndex((item: any) => item.symbol === quote.symbol);
+      const nextItem = {
+        coin: quote.coin,
+        symbol: quote.symbol,
+        addedAt: existingIndex >= 0 ? watchlist[existingIndex].addedAt : new Date().toISOString(),
+        currentPrice: quote.currentPrice,
+        priceAtAdd: existingIndex >= 0 ? watchlist[existingIndex].priceAtAdd : quote.currentPrice,
+        change24h: quote.change24h,
+      };
+
+      if (existingIndex >= 0) {
+        watchlist[existingIndex] = nextItem;
+      } else {
+        watchlist.push(nextItem);
+      }
+
+      store.WATCHLIST = watchlist;
+      writeStore(store);
+      res.status(201).json({ item: nextItem });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/watchlist/:coin", (req: express.Request, res: express.Response) => {
+    try {
+      const coin = (req.params.coin || "").toLowerCase();
+      if (!coin) return res.status(400).json({ error: "coin required" });
+
+      const symbols = new Set<string>();
+      const direct = coinMap[coin];
+      if (direct) symbols.add(direct.symbol);
+      symbols.add(coin.toUpperCase());
+
+      const store = readStore();
+      store.WATCHLIST = (store.WATCHLIST || []).filter((item: any) => !symbols.has((item.symbol || "").toUpperCase()));
+      writeStore(store);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/export-config", (_req: express.Request, res: express.Response) => {
+    const now = new Date().toISOString();
+    const body = [
+      `# ElizClaw — Quick Deploy Config`,
+      `# Generated ${now}`,
+      ``,
+      `# Step 1: Copy this to your .env file`,
+      `OPENAI_API_KEY=your_model_api_key_here`,
+      `OPENAI_API_URL=your_model_endpoint_here`,
+      `NODE_ENV=production`,
+      `DATA_DIR=/app/data`,
+      `HELIUS_API_KEY=optional_for_enhanced_wallet_data`,
+      ``,
+      `# Step 2: Run with Docker (one command)`,
+      `docker run -d \\`,
+      `  --name elizclaw \\`,
+      `  -p 3000:3000 \\`,
+      `  -e OPENAI_API_KEY=your_key \\`,
+      `  -e OPENAI_API_URL=your_endpoint \\`,
+      `  -e NODE_ENV=production \\`,
+      `  vinaystwt/elizclaw:latest`,
+      ``,
+      `# Step 3: Open your browser`,
+      `# http://localhost:3000`,
+    ].join("\n");
+
+    res.type("text/plain").send(body);
   });
 
   // ── Chat proxy ──

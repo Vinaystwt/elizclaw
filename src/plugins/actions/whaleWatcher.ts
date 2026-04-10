@@ -75,6 +75,34 @@ function formatEvent(event: WhaleAlert): string {
   return `• ${event.label || wallet} — ${event.symbol} ${amountText} (${wallet})`;
 }
 
+function inferPattern(events: WhaleAlert[], event: WhaleAlert): string {
+  const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  const related = events.filter((entry) => {
+    const matchesCoin = entry.symbol === event.symbol;
+    const ts = new Date(entry.timestamp).getTime();
+    return matchesCoin && ts >= oneWeekAgo;
+  });
+
+  if (related.length <= 1) return "first move this week";
+  const inCount = related.filter((entry: any) => ((entry.direction || "IN").toUpperCase() === "IN")).length;
+  const outCount = related.length - inCount;
+  return inCount >= outCount ? "repeated accumulation" : "distribution";
+}
+
+function buildWhaleContext(event: WhaleAlert, events: WhaleAlert[]): string {
+  const direction = ((event as any).direction || "IN").toUpperCase();
+  const wallet = event.wallet.length > 16 ? `${event.wallet.slice(0, 8)}...${event.wallet.slice(-4)}` : event.wallet;
+  const knownEntity = KNOWN_WHALES[event.wallet] || event.label || "Unlabeled wallet";
+
+  return [
+    `🐋 **Whale context:**`,
+    `- Wallet: ${wallet}`,
+    `- Move: ${event.amount.toLocaleString()} ${event.symbol} ${direction}`,
+    `- Known entity: ${knownEntity}`,
+    `- Pattern: ${inferPattern(events, event)}`,
+  ].join("\n");
+}
+
 export const whaleWatcherAction: Action = {
   name: "WHALE_WATCHER",
   similes: ["WHALE_ALERT", "SMART_MONEY", "LARGE_TRANSFER", "WHALE_TRACK"],
@@ -124,7 +152,7 @@ export const whaleWatcherAction: Action = {
       setStore("WHALE_WATCHERS", watchers);
       const recentEvents = await fetchRecentTransfers(address);
       const recentSummary = recentEvents.length > 0
-        ? `\n\n**Recent movements:**\n${recentEvents.map(formatEvent).join("\n")}`
+        ? `\n\n**Recent movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}`
         : `\n\nNo whale movements recorded yet. I am watching ${watchers.filter((w: any) => w.is_active).length} wallet${watchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.`;
 
       callback({
@@ -142,7 +170,7 @@ export const whaleWatcherAction: Action = {
     response += `Currently tracking ${activeWatchers.length} wallet(s).\n\n`;
 
     if (recentEvents.length > 0) {
-      response += `**Recent whale movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n`;
+      response += `**Recent whale movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}\n\n`;
     } else if (activeWatchers.length > 0) {
       response += `No whale movements recorded yet. I am watching ${activeWatchers.length} wallet${activeWatchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.\n\n`;
     }

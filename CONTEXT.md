@@ -282,6 +282,25 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **HTTP tests stabilized**: Rewrote `http.test.ts` to use mocked fetch responses instead of live network calls to CoinGecko/httpbin. Test suite is now deterministic and passes offline.
 - **Verification complete**: `bun test` passes, backend `bun run build` passes, frontend `bun run build` passes with `output: 'export'`.
 
+### Session 14: Alpha Block — Intelligence + Backend Features
+- **Alert rationale added to price monitoring**: `monitorPrice.ts` now appends an “Explain Why I Alerted” block when thresholds trigger, including price move, CoinGecko trending status, 7-day momentum comparison, and a suggested action. Context fetches still use a 3-second non-blocking timeout pattern.
+- **Whale context added**: `whaleWatcher.ts` now appends a whale context block with truncated wallet, move size/direction, known entity label, and a simple accumulation/distribution pattern heuristic.
+- **Signal monitor upgraded to synthesized brief**: `signalMonitor.ts` was refactored into reusable signal snapshot helpers and now returns a structured Market Signal Brief with momentum, builder activity, whale-aware synthesis, and an overall read heuristic instead of a raw list.
+- **Portfolio x whale overlap added**: `walletTracker.ts` now reads `WHALE_EVENTS` from the last 7 days, cross-references them against wallet holdings, and appends a Smart Money Overlap section with confidence scoring and accumulation/distribution interpretation.
+- **Daily brief action added**: Created `src/plugins/actions/signalDigest.ts`. The new `SIGNAL_DIGEST` action generates a daily brief from signal snapshot data, the last 24 hours of logs, whale activity, and next scheduled tasks, stores results in `DAILY_BRIEFS`, and returns the brief text plus structured data.
+- **Agent report card data added**: `agentReport.ts` now stores structured report objects in `AGENT_REPORTS` including success/failure rates, tasks by type, recent failures, uptime, tasks run today, and average execution time.
+- **Watchlist action added**: Created `src/plugins/actions/watchlist.ts`. The new `WATCHLIST` action supports add/remove/view flows for tracked coins, fetches CoinGecko quotes, and stores items in `WATCHLIST`.
+- **Plugin registry expanded**: `elizclaw.ts` now registers `SIGNAL_DIGEST` and `WATCHLIST`, bringing the main plugin action count to 12.
+- **New single-port API endpoints added**:
+  - `GET /api/digest` → most recent daily brief
+  - `GET /api/report` → most recent structured agent report
+  - `GET /api/watchlist` → refreshed watchlist items
+  - `POST /api/watchlist` → add or refresh a watchlist coin
+  - `DELETE /api/watchlist/:coin` → remove a watchlist coin
+  - `GET /api/export-config` → plain text quick deploy configuration
+- **Demo seed script added**: Created `scripts/seed-demo-data.mjs` and added `npm`/`bun` script alias `seed`. The script idempotently ensures demo tasks, logs, whale events, a daily brief, watchlist items, and whale watchers exist in `store.json`.
+- **Verification complete**: `bun test` passes, backend `bun run build` passes, frontend `bun run build` passes, and `node scripts/seed-demo-data.mjs` runs without errors.
+
 ---
 
 ## 6. CURRENT STATUS
@@ -294,7 +313,12 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **Chat**: Proxies to agent on port 3000, falls back to simulated responses if offline. Quick Commands panel with 4 preset prompts.
 - **Tasks**: Full CRUD via `/api/tasks`, plus production update/delete support on `/api/tasks/:id`, reads/writes `data/store.json`
 - **Logs**: Reads logs + stats from `data/store.json`, auto-refreshes. Live indicator badge (pulsing green dot).
-- **Actions**: 9 actions in elizclaw plugin + 1 in priceGuess plugin = 10 total
+- **Digest API**: `GET /api/digest` returns the latest generated daily brief from `DAILY_BRIEFS`.
+- **Report API**: `GET /api/report` returns the latest structured agent report from `AGENT_REPORTS`.
+- **Watchlist API**: `GET/POST/DELETE /api/watchlist*` manages personal tracked coins with stored quote snapshots.
+- **Export Config API**: `GET /api/export-config` returns a ready-to-copy deployment config as plain text.
+- **Actions**: 12 actions in elizclaw plugin + 1 in priceGuess plugin = 13 total
+- **Daily intelligence actions**: `SIGNAL_DIGEST` generates stored daily briefs and `WATCHLIST` manages tracked coins.
 - **Providers**: 3 context providers (tasks, memory, priceGuess)
 - **Evaluators**: 1 task completion evaluator
 - **HTTP**: Retry logic, timeouts, rate-limit handling
@@ -302,6 +326,7 @@ Updated character.ts with new capabilities, post examples, and message examples.
 - **Settings**: Wired to localStorage — notification threshold + model endpoint persist
 - **Error handling**: Graceful degradation across all actions
 - **Health check**: `GET /health` returns `{status, uptime, tasksActive, version}`
+- **Seed script**: `node scripts/seed-demo-data.mjs` populates realistic demo data for judging and video capture without creating duplicates.
 - **Git**: Clean, Vinay-only authorship, 1 contributor
 - **Nosana job def**: `nos_job_def/nosana_eliza_job_definition.json` created and ready
 

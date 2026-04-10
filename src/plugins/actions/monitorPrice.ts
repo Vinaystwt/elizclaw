@@ -1,5 +1,6 @@
 import { Action, IAgentRuntime, Memory, State } from "@elizaos/core";
 import { httpGet } from "../utils/http.ts";
+import { fetchTrendingCoins } from "./signalMonitor.ts";
 import { MonitorPriceInput } from "../utils/schemas.ts";
 
 /**
@@ -73,9 +74,8 @@ export const monitorPriceAction: Action = {
 
       if (price > threshold) {
         msg += `\n\n🔔 **Above your $${threshold.toLocaleString()} threshold!**`;
-        // Append market context from CoinGecko trending
-        const marketContext = await getMarketContext();
-        if (marketContext) msg += `\n${marketContext}`;
+        const rationale = await buildAlertRationale(symbol, threshold, price, Number(change));
+        msg += `\n\n${rationale}`;
       } else {
         msg += `\n(Below $${threshold.toLocaleString()} — no alert triggered)`;
       }
@@ -98,28 +98,77 @@ export const monitorPriceAction: Action = {
  * Uses Promise.race with 3s timeout so it never blocks the price response.
  * Returns a 1-sentence market context or null if unavailable.
  */
-async function getMarketContext(): Promise<string | null> {
+async function getTrendingContext(symbol: string): Promise<{ trending: boolean } | null> {
   try {
     const timeout = new Promise<null>((_, reject) =>
       setTimeout(() => reject(new Error("timeout")), 3000)
     );
 
-    const fetchCtx = httpGet(
-      "https://api.coingecko.com/api/v3/search/trending"
-    );
+    const fetchCtx = fetchTrendingCoins();
 
     const result = await Promise.race([fetchCtx, timeout]);
-    if (!result.ok || !result.data) return null;
-
-    const trending = (result.data as any)?.coins || [];
-    if (trending.length > 0) {
-      const top = trending[0]?.item;
-      if (top?.name) {
-        return `\nMarket context: ${top.name} is currently trending #1 on CoinGecko.`;
-      }
-    }
-    return null;
+    if (!Array.isArray(result)) return null;
+    return {
+      trending: result.some((name) => name.toUpperCase() === symbol || name.toLowerCase() === symbol.toLowerCase()),
+    };
   } catch {
     return null; // Silent failure — alert still fires without context
   }
+}
+
+async function getSevenDayAverage(coinId: string): Promise<number | null> {
+  try {
+    const timeout = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 3000)
+    );
+
+    const fetchAvg = httpGet(
+      `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=7`
+    );
+
+    const result = await Promise.race([fetchAvg, timeout]);
+    if (!(result as any)?.ok || !(result as any)?.data) return null;
+
+    const prices = ((result as any).data?.prices || []).map((entry: number[]) => entry[1]).filter(Boolean);
+    if (prices.length === 0) return null;
+
+    const total = prices.reduce((sum: number, value: number) => sum + value, 0);
+    return total / prices.length;
+  } catch {
+    return null;
+  }
+}
+
+async function buildAlertRationale(symbol: string, threshold: number, currentPrice: number, change24h: number): Promise<string> {
+  const coinIdMap: Record<string, string> = {
+    BTC: "bitcoin",
+    ETH: "ethereum",
+    SOL: "solana",
+    DOGE: "dogecoin",
+    ADA: "cardano",
+    AVAX: "avalanche-2",
+    MATI: "matic-network",
+    BNB: "binancecoin",
+    XRP: "ripple",
+  };
+
+  const [trendingContext, sevenDayAverage] = await Promise.all([
+    getTrendingContext(symbol),
+    getSevenDayAverage(coinIdMap[symbol] || "bitcoin"),
+  ]);
+
+  const trendingText = trendingContext?.trending ? "trending on CoinGecko" : "not trending on CoinGecko";
+  const momentumText = sevenDayAverage
+    ? `${currentPrice >= sevenDayAverage ? "above" : "below"} 7-day average ($${sevenDayAverage.toLocaleString(undefined, { maximumFractionDigits: 2 })})`
+    : "7-day average unavailable";
+  const suggestedAction = change24h >= 0 ? "Monitor closely" : "Consider position";
+
+  return [
+    `⚡ Alert triggered: ${symbol} crossed $${threshold.toLocaleString()}`,
+    `Why this matters:`,
+    `- Price: $${currentPrice.toLocaleString()} (${change24h >= 0 ? "+" : ""}${change24h.toFixed(2)}% in 24h)`,
+    `- Market context: ${trendingText}`,
+    `- Momentum: ${momentumText}`,
+    `- Suggested action: ${suggestedAction}`,
+  ].join("\n");
 }

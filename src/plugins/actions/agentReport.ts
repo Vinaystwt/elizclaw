@@ -6,7 +6,7 @@
  *          "status report", "how are you doing"
  */
 import { Action, IAgentRuntime, Memory, State } from "@elizaos/core";
-import { getStore } from "../store.ts";
+import { getStore, setStore } from "../store.ts";
 
 export const agentReportAction: Action = {
   name: "AGENT_REPORT",
@@ -45,6 +45,29 @@ export const agentReportAction: Action = {
 
     // Active tasks
     const activeTasks = tasks.filter((t: any) => t.is_active).length;
+    const today = new Date().toISOString().split("T")[0];
+    const tasksRunToday = logs.filter((l: any) => l.executed_at?.startsWith(today)).length;
+    const avgExecutionTime = logs
+      .map((l: any) => l.duration_ms)
+      .filter((value: any) => typeof value === "number")
+      .reduce((sum: number, value: number, _index: number, values: number[]) => sum + value / values.length, 0);
+
+    const structuredReport = {
+      timestamp: new Date().toISOString(),
+      totalTasks: totalExecuted,
+      successRate: Number(successRate),
+      failureRate: totalExecuted > 0 ? Number(((failed / totalExecuted) * 100).toFixed(1)) : 0,
+      mostUsedAction: mostUsedName,
+      tasksByType: typeCounts,
+      recentFailures: recentFailures.map((failure: any) => ({
+        task: tasks.find((t: any) => t.id === failure.task_id)?.name || `Task #${failure.task_id}`,
+        error: (failure.output || "Unknown error").substring(0, 120),
+        time: failure.executed_at || new Date().toISOString(),
+      })),
+      uptime: Math.floor(process.uptime()),
+      tasksRunToday,
+      avgExecutionTime: Number(avgExecutionTime.toFixed(2)),
+    };
 
     // Build report
     let report = `📊 **Performance Report**\n\n`;
@@ -66,7 +89,10 @@ export const agentReportAction: Action = {
       report += `\n✅ No failures — running clean.`;
     }
 
-    callback({ text: report });
+    const history = getStore<any[]>("AGENT_REPORTS") || [];
+    setStore("AGENT_REPORTS", [structuredReport, ...history].slice(0, 20));
+
+    callback({ text: report, data: structuredReport });
   },
 
   examples: [

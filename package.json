@@ -8,6 +8,7 @@
     "build": "tsup src/index.ts --format esm --external express --external express-rate-limit --out-dir dist",
     "start": "tsc && node --loader ts-node/esm src/index.ts",
     "dev": "tsc && node --loader ts-node/esm src/index.ts",
+    "seed": "node scripts/seed-demo-data.mjs",
     "test": "bun test",
     "eliza": "elizaos agent start",
     "clean": "rm -rf dist data"

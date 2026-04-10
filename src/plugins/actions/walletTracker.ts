@@ -132,6 +132,42 @@ function getSmartMoneyContext(balances: TokenBalance[]): string | null {
   }
 }
 
+function getWhaleOverlapContext(balances: TokenBalance[]): string {
+  const whaleEvents = (getStore<any[]>("WHALE_EVENTS") || []).filter((event: any) => {
+    const ts = new Date(event.timestamp || 0).getTime();
+    return Number.isFinite(ts) && ts >= Date.now() - (7 * 24 * 60 * 60 * 1000);
+  });
+
+  const balanceMap = new Map(balances.map((balance) => [balance.symbol.toUpperCase(), balance]));
+  const eventCounts: Record<string, number> = {};
+  const directionCounts: Record<string, { in: number; out: number }> = {};
+
+  whaleEvents.forEach((event: any) => {
+    const coin = (event.symbol || "").toUpperCase();
+    if (!coin) return;
+    eventCounts[coin] = (eventCounts[coin] || 0) + 1;
+    directionCounts[coin] ||= { in: 0, out: 0 };
+    if ((event.direction || "").toUpperCase() === "OUT") {
+      directionCounts[coin].out += 1;
+    } else {
+      directionCounts[coin].in += 1;
+    }
+  });
+
+  const overlaps = Array.from(balanceMap.keys()).filter((symbol) => eventCounts[symbol]);
+  if (overlaps.length === 0) {
+    return "No whale activity detected for your current holdings in the last 7 days.";
+  }
+
+  return overlaps.map((symbol) => {
+    const balance = balanceMap.get(symbol)!;
+    const counts = directionCounts[symbol];
+    const confidence = eventCounts[symbol] >= 3 ? "High" : eventCounts[symbol] === 2 ? "Medium" : "Low";
+    const pattern = counts.in >= counts.out ? "accumulating" : "distributing";
+    return `${symbol} — You hold ${balance.amount.toFixed(4)}. Whales have been ${pattern} this asset recently.\nConfidence: ${confidence}`;
+  }).join("\n\n");
+}
+
 /**
  * Generate a narrative interpretation of a wallet's portfolio.
  * Analyzes concentration, diversification, and risk profile from balance data.
@@ -266,6 +302,7 @@ export const walletTrackerAction: Action = {
     if (smartMoneyContext) {
       response += `\n\n🐋 **Smart Money:**\n${smartMoneyContext}`;
     }
+    response += `\n\n🔍 **Smart Money Overlap:**\n${getWhaleOverlapContext(balances)}`;
     response += `\n\nWant me to set up alerts for this wallet? I can notify you on big moves.`;
 
     callback({ text: response });
