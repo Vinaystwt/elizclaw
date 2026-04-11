@@ -135,11 +135,31 @@ const demoWatchlist = [
   { coin: "Ethereum", symbol: "ETH", addedAt: hoursAgo(72), currentPrice: 2366, priceAtAdd: 2288, change24h: 2.27 },
 ];
 
+const demoReports = [
+  {
+    timestamp: hoursAgo(24),
+    totalTasks: 3,
+    successRate: 94,
+    failureRate: 6,
+    mostUsedAction: "MONITOR_PRICE",
+    tasksByType: {
+      price_monitor: 12,
+      signal_monitor: 8,
+      whale_watcher: 6,
+    },
+    recentFailures: [],
+    uptime: 86400,
+    tasksRunToday: 3,
+    avgExecutionTime: 1240,
+  },
+];
+
 const store = readStore();
 store.TASKS = mergeByKey(store.TASKS || [], demoTasks, (item) => item.name);
 store.LOGS = mergeByKey(store.LOGS || [], demoLogs, (item) => item.id || `${item.task_id}-${item.executed_at}`);
 store.WHALE_EVENTS = mergeByKey(store.WHALE_EVENTS || [], demoWhaleEvents, (item) => item.id || item.txSignature);
 store.DAILY_BRIEFS = mergeByKey(store.DAILY_BRIEFS || [], demoBriefs, (item) => item.timestamp);
+store.AGENT_REPORTS = mergeByKey(store.AGENT_REPORTS || [], demoReports, (item) => item.timestamp);
 store.WATCHLIST = mergeByKey(store.WATCHLIST || [], demoWatchlist, (item) => item.symbol);
 store.WHALE_WATCHERS = mergeByKey(store.WHALE_WATCHERS || [], [
   {

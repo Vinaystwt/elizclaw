@@ -738,23 +738,25 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Added `NEXT_PUBLIC_AGENT_URL` passthrough in `frontend/next.config.mjs`.
 - Updated `frontend/src/lib/api.ts` so the static-export frontend can call a configured external agent origin in production while still using `localhost:3000` during local dual-port development.
 - Cleaned the logs page row tint implementation to avoid unsupported Tailwind opacity syntax on CSS-variable colors.
+- Confirmed Vercel production deployment URL: `https://frontend-7yzi72g68-vinaystwts-projects.vercel.app`
 
 ### Backend startup change
 - Updated `src/index.ts` so dashboard routing uses a late-bound agent ID getter instead of a fixed string at attach time.
 - Reordered startup to bind the DirectClient HTTP server before waiting on slower agent initialization, so health/dashboard routes are not structurally coupled to a fully initialized runtime.
 - Removed `@elizaos/plugin-node` from the runtime plugin list because the session showed it initializing LlamaService paths that are not used by ElizClaw and were contributing to stalled startup during verification.
+- Updated `GET /api/report` to return a synthesized fallback report when `AGENT_REPORTS` is empty instead of returning `null`.
 
 ### Verification results
 - `cd frontend && bun run build` now completes successfully after the CSS/export fixes.
 - `node scripts/seed-demo-data.mjs` succeeds and seeds demo tasks/logs/watchlist/report data.
 - `cd /Users/vinaysharma/elizclaw && bun run build` succeeds.
 - `bun test` passes: 10/10 tests green.
-- Local curl verification against `http://localhost:3000/*` is still blocked by a backend startup issue: the process logs embedding-setting initialization but never binds port 3000 during this session, so `/health`, `/api/digest`, `/api/report`, `/api/watchlist`, and `/api/export-config` could not be verified live.
+- Final localhost verification later in the session succeeded for `/health`, `/api/digest`, `/api/watchlist`, `/api/tasks`, and `/api/export-config`; `/api/report` now returns seeded structured data instead of `null`.
 
 ### Deployment / packaging status
 - `vercel whoami` succeeds (`vinaystwt`), and Vercel project linking created `frontend/.vercel/project.json`.
-- `vercel deploy --prod --yes` begins successfully but stalled during upload in this session before returning a deployment URL.
-- Docker access is present on the machine but daemon access from this session requires elevated permissions; Docker image build/push was not completed in Session 15.
+- `vercel deploy --prod --yes --debug` confirmed production deployment URL `https://frontend-7yzi72g68-vinaystwts-projects.vercel.app`.
+- Docker rebuild completed and the pushed image repo digest is `sha256:91dc5b0c28a036a109cc9a179bf0c2a0a8bb84c2417a9c5ce5f21724eb3c1310`.
 
 ### Remaining blockers after Session 15
 - Diagnose why the production runtime logs embedding initialization but does not bind port 3000 in this environment.

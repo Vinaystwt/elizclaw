@@ -161,6 +161,47 @@ function calcNextRun(schedule: string): Date | null {
   return new Date(now.getTime() + 3600000);
 }
 
+function buildFallbackReport(store: Record<string, any>) {
+  const logs = Array.isArray(store.LOGS) ? store.LOGS : [];
+  const tasks = Array.isArray(store.TASKS) ? store.TASKS : [];
+  const today = new Date().toISOString().split("T")[0];
+  const totalTasks = logs.length;
+  const successful = logs.filter((entry: any) => entry.status === "success").length;
+  const failed = logs.filter((entry: any) => entry.status === "failed").length;
+  const successRate = totalTasks > 0 ? Math.round((successful / totalTasks) * 100) : 0;
+  const failureRate = totalTasks > 0 ? Math.round((failed / totalTasks) * 100) : 0;
+  const tasksByType = logs.reduce((acc: Record<string, number>, entry: any) => {
+    const type = entry.type || entry.task_type || "unknown";
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+  const mostUsedEntry = Object.entries(tasksByType).sort((a, b) => b[1] - a[1])[0];
+  const durations = logs.map((entry: any) => entry.duration_ms).filter((value: any) => typeof value === "number");
+  const avgExecutionTime = durations.length
+    ? Math.round(durations.reduce((sum: number, value: number) => sum + value, 0) / durations.length)
+    : 0;
+
+  return {
+    timestamp: new Date().toISOString(),
+    totalTasks,
+    successRate,
+    failureRate,
+    mostUsedAction: mostUsedEntry ? mostUsedEntry[0].toUpperCase() : "MONITOR_PRICE",
+    tasksByType,
+    recentFailures: logs
+      .filter((entry: any) => entry.status === "failed")
+      .slice(-3)
+      .map((entry: any) => ({
+        task: tasks.find((task: any) => task.id === entry.task_id)?.name || `Task #${entry.task_id || "unknown"}`,
+        error: entry.output || "Unknown failure",
+        time: entry.executed_at || new Date().toISOString(),
+      })),
+    uptime: Math.floor(process.uptime()),
+    tasksRunToday: logs.filter((entry: any) => entry.executed_at?.startsWith(today)).length,
+    avgExecutionTime,
+  };
+}
+
 async function refreshWatchlistItems(items: any[]) {
   const refreshed = await Promise.all(items.map(async (item) => {
     const quote = await fetchCoinQuote(item.symbol || item.coin);
@@ -407,7 +448,8 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
 
   app.get("/api/report", (_req: express.Request, res: express.Response) => {
     try {
-      const report = (readStore().AGENT_REPORTS || [])[0] || null;
+      const store = readStore();
+      const report = (store.AGENT_REPORTS || [])[0] || buildFallbackReport(store);
       res.json({ report });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
