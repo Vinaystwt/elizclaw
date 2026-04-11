@@ -721,3 +721,44 @@ The following analysis was completed and approved by the strategic advisor. Do n
 ---
 
 END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Reference this context before making any decisions. Do NOT ask me to repeat any of this information.
+
+---
+
+## 20. SESSION 15 — Warm Graphite Frontend Completion + Verification Pass
+
+### Frontend system updates
+- Confirmed the warm graphite design system is now the active frontend baseline: background `#141210`, surfaces `#1C1A17/#242018/#2C2820`, brass accent `#C4922A`, text `#E8E2D9/#8A8278`, border `#2E2A25`, success `#4A7C59`, danger `#8B3A3A`.
+- Confirmed Plus Jakarta Sans and JetBrains Mono are wired through `frontend/src/app/layout.tsx`.
+- Added Tailwind font family mappings in `frontend/tailwind.config.ts` so `font-sans` and `font-mono` resolve to the approved font variables.
+- Fixed Tailwind token usage that was breaking `next build`: removed invalid opacity-suffixed utility usage on CSS-variable colors inside `@apply`, and replaced those with explicit RGBA declarations in `frontend/src/styles/globals.css`.
+- Kept the rebuilt sidebar, mobile tab bar, UI primitives, report page, watchlist page, and tasks drawer structure in place.
+
+### Frontend runtime + deployment compatibility
+- Simplified `frontend/next.config.mjs` for static export compatibility by removing export-incompatible rewrites.
+- Added `NEXT_PUBLIC_AGENT_URL` passthrough in `frontend/next.config.mjs`.
+- Updated `frontend/src/lib/api.ts` so the static-export frontend can call a configured external agent origin in production while still using `localhost:3000` during local dual-port development.
+- Cleaned the logs page row tint implementation to avoid unsupported Tailwind opacity syntax on CSS-variable colors.
+
+### Backend startup change
+- Updated `src/index.ts` so dashboard routing uses a late-bound agent ID getter instead of a fixed string at attach time.
+- Reordered startup to bind the DirectClient HTTP server before waiting on slower agent initialization, so health/dashboard routes are not structurally coupled to a fully initialized runtime.
+- Removed `@elizaos/plugin-node` from the runtime plugin list because the session showed it initializing LlamaService paths that are not used by ElizClaw and were contributing to stalled startup during verification.
+
+### Verification results
+- `cd frontend && bun run build` now completes successfully after the CSS/export fixes.
+- `node scripts/seed-demo-data.mjs` succeeds and seeds demo tasks/logs/watchlist/report data.
+- `cd /Users/vinaysharma/elizclaw && bun run build` succeeds.
+- `bun test` passes: 10/10 tests green.
+- Local curl verification against `http://localhost:3000/*` is still blocked by a backend startup issue: the process logs embedding-setting initialization but never binds port 3000 during this session, so `/health`, `/api/digest`, `/api/report`, `/api/watchlist`, and `/api/export-config` could not be verified live.
+
+### Deployment / packaging status
+- `vercel whoami` succeeds (`vinaystwt`), and Vercel project linking created `frontend/.vercel/project.json`.
+- `vercel deploy --prod --yes` begins successfully but stalled during upload in this session before returning a deployment URL.
+- Docker access is present on the machine but daemon access from this session requires elevated permissions; Docker image build/push was not completed in Session 15.
+
+### Remaining blockers after Session 15
+- Diagnose why the production runtime logs embedding initialization but does not bind port 3000 in this environment.
+- Re-run the five localhost curl checks once the runtime starts cleanly.
+- Retry Vercel production deploy and capture the final URL.
+- Run Docker build + push once daemon access is granted.
+- Commit Session 15 changes with commit-tree and push when deployment/package steps are complete.

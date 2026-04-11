@@ -1,59 +1,62 @@
 'use client';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ListTodo, Activity, Settings } from 'lucide-react';
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ActivityIcon, DashboardIcon, ReportIcon, SettingsIcon, TasksIcon, WatchlistIcon } from "@/components/Icons";
+import { MonoText } from "@/components/ui/MonoText";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/tasks', label: 'Tasks', icon: ListTodo },
-  { href: '/logs', label: 'Activity', icon: Activity },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: "/", label: "Dashboard", icon: DashboardIcon },
+  { href: "/tasks", label: "Tasks", icon: TasksIcon },
+  { href: "/logs", label: "Activity", icon: ActivityIcon },
+  { href: "/watchlist", label: "Watchlist", icon: WatchlistIcon },
+  { href: "/report", label: "Report", icon: ReportIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-[#0A0A0F] border-r border-[#1E1E2E] p-5 flex flex-col z-50">
-      {/* Logo */}
-      <div className="mb-8 px-1">
-        <div className="flex items-center gap-0.5 mb-1">
-          <span className="text-indigo-400 font-black tracking-tighter text-lg">⟋⟋⟋</span>
-          <span className="font-light text-slate-300 text-lg">ELIZ</span>
-          <span className="font-black text-indigo-400 text-lg">CLAW</span>
-        </div>
-        <p className="text-[10px] text-[#94A3B8] tracking-wider uppercase">on-chain intelligence · always watching</p>
-      </div>
-
-      {/* Nav */}
-      <nav className="space-y-1 flex-1">
-        {navItems.map(item => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-[14px] font-medium ${
-                isActive ? 'nav-active' : 'nav-inactive'
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Bottom status */}
-      <div className="pt-4 border-t border-[#1E1E2E]">
-        <div className="flex items-center gap-2 px-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
+    <aside className="sticky top-6 hidden h-[calc(100dvh-3rem)] w-[14rem] shrink-0 rounded-[2rem] p-[0.45rem] shadow-panel chrome-shell md:block">
+      <div className="chrome-core flex h-full flex-col rounded-[1.6rem] px-4 py-5">
+        <div className="space-y-3">
           <div>
-            <p className="text-[12px] font-medium text-[#F1F5F9]">Agent Active</p>
-            <p className="text-[10px] text-[#94A3B8]">Nosana GPU Network</p>
+            <p className="text-[0.76rem] font-extrabold uppercase tracking-[0.15em] text-text-primary">
+              ELIZCLAW
+            </p>
+            <p className="pt-2 text-[0.76rem] leading-6 text-text-secondary">
+              Quiet market intelligence for mornings that need clarity.
+            </p>
           </div>
+        </div>
+
+        <nav className="mt-8 flex flex-1 flex-col gap-1">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                className={cn(
+                  "group flex items-center gap-3 rounded-[1.15rem] border px-3 py-3 text-[0.94rem] text-text-secondary hover:bg-surface-2 hover:text-text-primary",
+                  active ? "border-accent text-text-primary" : "border-transparent",
+                )}
+                href={item.href}
+                key={item.href}
+              >
+                <span className={cn("h-8 w-px rounded-full bg-transparent", active && "bg-accent")} />
+                <Icon className={cn("text-text-muted group-hover:text-accent", active && "text-accent")} />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="space-y-2 border-t border-border pt-4 text-[0.78rem] text-text-muted">
+          <p>Personal intelligence desk</p>
+          <MonoText className="text-[0.76rem] text-text-secondary">v1.0.0</MonoText>
         </div>
       </div>
     </aside>

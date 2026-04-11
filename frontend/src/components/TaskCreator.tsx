@@ -1,121 +1,196 @@
 'use client';
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
 
-const coins = ['BTC', 'ETH', 'SOL', 'DOGE', 'ADA', 'AVAX', 'BNB', 'XRP'];
-const taskTypes = ['price_monitor', 'wallet_tracker', 'whale_watcher', 'signal_monitor', 'web_scrape', 'api_call'];
+import { useEffect, useState } from "react";
+import { CloseIcon, PlusIcon } from "@/components/Icons";
+import { Badge } from "@/components/ui/Badge";
+import { fetchJson } from "@/lib/api";
+import type { TaskRecord } from "@/lib/types";
 
-export function TaskCreator({ onCreated }: { onCreated?: () => void }) {
+const taskTypes = [
+  { value: "price_monitor", label: "Price monitor" },
+  { value: "wallet_tracker", label: "Wallet tracker" },
+  { value: "whale_watcher", label: "Whale watcher" },
+  { value: "signal_monitor", label: "Signal brief" },
+  { value: "web_scrape", label: "Web digest" },
+  { value: "api_call", label: "API call" },
+];
+
+const schedules = [
+  "Every day at 8:00 AM",
+  "Every day at 12:00 PM",
+  "Every hour",
+  "Every 6 hours",
+  "Every week on Monday",
+];
+
+export function TaskCreator({ onCreated }: { onCreated?: (task?: TaskRecord) => void }) {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState('price_monitor');
-  const [name, setName] = useState('');
-  const [schedule, setSchedule] = useState('Every day at 8:00 AM');
-  const [coin, setCoin] = useState('BTC');
-  const [threshold, setThreshold] = useState('');
-  const [url, setUrl] = useState('');
-  const [address, setAddress] = useState('');
-  const [error, setError] = useState('');
+  const [name, setName] = useState("");
+  const [type, setType] = useState("price_monitor");
+  const [schedule, setSchedule] = useState(schedules[0]);
+  const [coin, setCoin] = useState("BTC");
+  const [threshold, setThreshold] = useState("");
+  const [address, setAddress] = useState("");
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const reset = () => { setName(''); setThreshold(''); setUrl(''); setAddress(''); setError(''); };
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
-  const handleSubmit = async () => {
-    setError('');
-    if (!name.trim()) { setError('Name is required'); return; }
+  const reset = () => {
+    setName("");
+    setThreshold("");
+    setAddress("");
+    setUrl("");
+    setError("");
+  };
+
+  async function handleSubmit() {
+    setError("");
+    if (!name.trim()) {
+      setError("Name is required.");
+      return;
+    }
 
     let config: Record<string, string> = {};
-    if (type === 'price_monitor') config = { coin, threshold: threshold || '0' };
-    if (type === 'wallet_tracker') config = { address };
-    if (type === 'web_scrape' || type === 'api_call') config = { url };
+    if (type === "price_monitor") config = { coin, threshold: threshold || "0" };
+    if (type === "wallet_tracker" || type === "whale_watcher") config = { address };
+    if (type === "web_scrape" || type === "api_call") config = { url };
 
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), type, schedule, config }),
+      const data = await fetchJson<{ task: TaskRecord }>("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          type,
+          schedule,
+          config,
+        }),
       });
-      if (!res.ok) throw new Error('Failed to create task');
+      onCreated?.(data.task);
       setOpen(false);
       reset();
-      onCreated?.();
-    } catch (e: any) {
-      setError(e.message);
+    } catch {
+      setError("Task creation failed. Try again in a moment.");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  if (!open) {
-    return <button onClick={() => setOpen(true)} className="btn-primary text-[13px] flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New Task</button>;
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-      <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-[#F1F5F9] mb-4">New Task</h3>
+    <>
+      <button className="button-primary" onClick={() => setOpen(true)} type="button">
+        <PlusIcon className="h-4 w-4" />
+        New task
+      </button>
 
-        {error && <div className="mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">{error}</div>}
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Task Name</label>
-            <input className="input-field w-full text-[13px]" placeholder="e.g., BTC price check" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Type</label>
-            <select className="input-field w-full text-[13px]" value={type} onChange={e => setType(e.target.value)}>
-              {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-            </select>
-          </div>
-
-          {type === 'price_monitor' && (
-            <>
-              <div>
-                <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Coin</label>
-                <select className="input-field w-full text-[13px]" value={coin} onChange={e => setCoin(e.target.value)}>
-                  {coins.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+      <div
+        aria-hidden={!open}
+        className={`drawer-backdrop fixed inset-0 z-[60] transition-opacity duration-300 ${open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+      >
+        <div
+          className={`absolute inset-y-0 right-0 w-full max-w-[32rem] transform border-l border-border bg-background p-4 shadow-panel backdrop-blur-sm transition-transform duration-500 ease-[var(--ease-drawer)] md:p-6 ${open ? "translate-x-0" : "translate-x-full"}`}
+        >
+          <div className="chrome-shell flex h-full flex-col rounded-[2rem] p-[0.38rem]">
+            <div className="chrome-core flex h-full flex-col rounded-[1.6rem] px-5 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-3">
+                  <Badge tone="accent">Command drawer</Badge>
+                  <div className="space-y-2">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-text-primary">Create a new automation</h2>
+                    <p className="max-w-[34ch] text-[0.92rem] leading-7 text-text-secondary">
+                      Keep the ask plain and practical. The drawer keeps the mechanics out of the way.
+                    </p>
+                  </div>
+                </div>
+                <button className="button-ghost !min-h-10 !px-3" onClick={() => setOpen(false)} type="button">
+                  <CloseIcon className="h-4 w-4" />
+                </button>
               </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Alert Threshold ($)</label>
-                <input className="input-field w-full text-[13px]" type="number" placeholder="e.g., 100000" value={threshold} onChange={e => setThreshold(e.target.value)} />
+
+              <div className="mt-6 flex-1 space-y-4 overflow-y-auto pr-1">
+                {error ? (
+                  <div className="rounded-[1.2rem] border border-danger bg-surface-3 px-4 py-3 text-[0.84rem] text-danger">{error}</div>
+                ) : null}
+
+                <label className="block space-y-2">
+                  <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Task name</span>
+                  <input className="input-base" onChange={(event) => setName(event.target.value)} placeholder="Morning whale overlap brief" value={name} />
+                </label>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block space-y-2">
+                    <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Task type</span>
+                    <select className="input-base" onChange={(event) => setType(event.target.value)} value={type}>
+                      {taskTypes.map((taskType) => (
+                        <option key={taskType.value} value={taskType.value}>
+                          {taskType.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block space-y-2">
+                    <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Schedule</span>
+                    <select className="input-base" onChange={(event) => setSchedule(event.target.value)} value={schedule}>
+                      {schedules.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {type === "price_monitor" ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block space-y-2">
+                      <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Coin</span>
+                      <input className="input-base mono" onChange={(event) => setCoin(event.target.value.toUpperCase())} value={coin} />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Alert threshold</span>
+                      <input className="input-base mono" onChange={(event) => setThreshold(event.target.value)} placeholder="95000" value={threshold} />
+                    </label>
+                  </div>
+                ) : null}
+
+                {(type === "wallet_tracker" || type === "whale_watcher") ? (
+                  <label className="block space-y-2">
+                    <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Wallet</span>
+                    <input className="input-base mono" onChange={(event) => setAddress(event.target.value)} placeholder="Solana address" value={address} />
+                  </label>
+                ) : null}
+
+                {(type === "web_scrape" || type === "api_call") ? (
+                  <label className="block space-y-2">
+                    <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">URL</span>
+                    <input className="input-base mono" onChange={(event) => setUrl(event.target.value)} placeholder="https://..." value={url} />
+                  </label>
+                ) : null}
               </div>
-            </>
-          )}
 
-          {type === 'wallet_tracker' && (
-            <div>
-              <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Wallet Address</label>
-              <input className="input-field w-full text-[13px] font-mono" placeholder="Solana address..." value={address} onChange={e => setAddress(e.target.value)} />
+              <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
+                <button className="button-ghost" onClick={() => setOpen(false)} type="button">
+                  Cancel
+                </button>
+                <button className="button-primary" disabled={submitting} onClick={handleSubmit} type="button">
+                  {submitting ? "Creating" : "Create task"}
+                </button>
+              </div>
             </div>
-          )}
-
-          {(type === 'web_scrape' || type === 'api_call') && (
-            <div>
-              <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">URL</label>
-              <input className="input-field w-full text-[13px] font-mono" placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#94A3B8] mb-1">Schedule</label>
-            <select className="input-field w-full text-[13px]" value={schedule} onChange={e => setSchedule(e.target.value)}>
-              <option>Every day at 8:00 AM</option>
-              <option>Every day at 12:00 PM</option>
-              <option>Every hour</option>
-              <option>Every 6 hours</option>
-              <option>Every week on Monday</option>
-            </select>
           </div>
-        </div>
-
-        <div className="flex gap-2 mt-5">
-          <button onClick={() => { setOpen(false); reset(); }} className="btn-ghost flex-1 text-[13px]">Cancel</button>
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary flex-1 text-[13px] disabled:opacity-50">{submitting ? 'Creating...' : 'Create Task'}</button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

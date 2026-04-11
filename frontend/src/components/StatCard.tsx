@@ -1,29 +1,23 @@
-/**
- * StatCard — dashboard metric with icon, label, value, and optional trend.
- */
-const accentBorder: Record<string, string> = {
-  indigo: 'border-l-[3px] border-l-indigo-500',
-  cyan: 'border-l-[3px] border-l-cyan-500',
-  emerald: 'border-l-[3px] border-l-emerald-500',
-  amber: 'border-l-[3px] border-l-amber-500',
-};
+import { MonoText } from "@/components/ui/MonoText";
+import { cn } from "@/lib/utils";
 
-export function StatCard({ icon, label, value, accent = 'indigo' }: {
-  icon: React.ReactNode;
+export function StatCard({
+  label,
+  value,
+  detail,
+}: {
   label: string;
-  value: string | number;
-  accent?: string;
+  value: string;
+  detail?: string;
 }) {
   return (
-    <div className={`card ${accentBorder[accent] || accentBorder.indigo}`}>
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-7 h-7 rounded-lg bg-[#0A0A0F] border border-[#1E1E2E] flex items-center justify-center">
-          {icon}
-        </div>
-        <span className="text-xs text-[#94A3B8] font-medium">{label}</span>
-      </div>
-      <div className="text-2xl font-bold font-mono text-[#F1F5F9] tracking-tight">
-        {value}
+    <div className="surface-row flex min-h-[7.25rem] flex-col justify-between">
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">{label}</p>
+      <div className="space-y-2">
+        <MonoText className={cn("block text-[1.7rem] font-medium tracking-[-0.05em] text-text-primary md:text-[2rem]")}>
+          {value}
+        </MonoText>
+        {detail ? <p className="text-[0.78rem] leading-6 text-text-muted">{detail}</p> : null}
       </div>
     </div>
   );

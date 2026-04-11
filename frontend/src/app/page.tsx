@@ -1,114 +1,217 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
-import { StatCard } from '@/components/StatCard';
-import { ActivityFeed } from '@/components/ActivityFeed';
-import { WhaleTimeline } from '@/components/WhaleTimeline';
-import { ChatWindow } from '@/components/ChatWindow';
-import { TaskCreator } from '@/components/TaskCreator';
-import { Zap, Activity, Clock, Eye, RefreshCw } from 'lucide-react';
+
+import { useEffect, useMemo, useState } from "react";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { ChatWindow } from "@/components/ChatWindow";
+import { RefreshIcon } from "@/components/Icons";
+import { StatCard } from "@/components/StatCard";
+import { TaskCreator } from "@/components/TaskCreator";
+import { WhaleTimeline } from "@/components/WhaleTimeline";
+import { Badge } from "@/components/ui/Badge";
+import { Divider } from "@/components/ui/Divider";
+import { LiveDot } from "@/components/ui/LiveDot";
+import { MonoText } from "@/components/ui/MonoText";
+import { Panel } from "@/components/ui/Panel";
+import { fetchJson } from "@/lib/api";
+import { clamp, formatDateStamp, formatDuration, formatTimestamp } from "@/lib/format";
+import type { DigestRecord, LogRecord, ReportRecord, TaskRecord } from "@/lib/types";
+
+type DashboardPayload = {
+  digest: DigestRecord | null;
+  report: ReportRecord | null;
+  logs: LogRecord[];
+  tasks: TaskRecord[];
+};
+
+type DashboardState = DashboardPayload & {
+  loading: boolean;
+};
+
+function computeHealth(report: ReportRecord | null, logs: LogRecord[]) {
+  const successRate = report?.successRate ?? 0;
+  const uptimeNorm = clamp(((report?.uptime ?? 0) / (60 * 60 * 12)) * 100, 0, 100);
+  const activityNorm = clamp(logs.length * 12, 0, 100);
+  return Math.round(clamp(successRate * 0.5 + uptimeNorm * 0.3 + activityNorm * 0.2, 0, 100));
+}
+
+function digestLines(digest: DigestRecord | null, tasks: TaskRecord[], logs: LogRecord[]) {
+  const output = digest?.brief || "";
+  const marketLine = output.match(/MARKET:\s*(.+)/i)?.[1] || "The market line is still forming.";
+  const whaleLine = output.match(/WHALE ACTIVITY:\s*(.+)/i)?.[1] || `${logs.filter((entry) => entry.task_type === "whale_watcher").length} whale checks recorded`;
+  const tasksLine = output.match(/YOUR TASKS:\s*(.+)/i)?.[1] || `${tasks.filter((task) => task.is_active).length} active tasks on the desk`;
+  const alertLine = digest?.topAlert || output.match(/TOP ALERT:\s*(.+)/i)?.[1] || "No top alert recorded yet.";
+  return { marketLine, whaleLine, tasksLine, alertLine };
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState({ total: 0, success: 0, failed: 0, running: 0 });
-  const [activeCount, setActiveCount] = useState(0);
-  const [whaleCount, setWhaleCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [state, setState] = useState<DashboardState>({
+    digest: null,
+    report: null,
+    logs: [],
+    tasks: [],
+    loading: true,
+  });
   const [now, setNow] = useState(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Live clock
   useEffect(() => {
-    const clock = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(clock);
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  // Fetch initial data
-  const fetchData = () => {
-    Promise.all([fetch('/api/logs').then(r => r.json()), fetch('/api/tasks').then(r => r.json())])
-      .then(([logs, tasks]) => {
-        setStats(logs.stats || { total: 0, success: 0, failed: 0, running: 0 });
-        setActiveCount((tasks.tasks || []).filter((t: any) => t.is_active).length);
-        const whaleTasks = (tasks.tasks || []).filter((t: any) => t.type === 'whale_watcher');
-        setWhaleCount(whaleTasks.length);
-        setLastUpdated(new Date());
-        setLoading(false);
-      }).catch(() => setLoading(false));
-  };
-
   useEffect(() => {
-    fetchData();
-    intervalRef.current = setInterval(fetchData, 30000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [refreshKey]);
+    let active = true;
 
-  const successRate = stats.total > 0 ? `${Math.round((stats.success / stats.total) * 100)}%` : '—';
+    const load = async () => {
+      try {
+        const [digestResponse, reportResponse, logsResponse, tasksResponse] = await Promise.all([
+          fetchJson<{ digest: DigestRecord | null }>("/api/digest"),
+          fetchJson<{ report: ReportRecord | null }>("/api/report"),
+          fetchJson<{ logs?: LogRecord[] }>("/api/logs?limit=12"),
+          fetchJson<{ tasks?: TaskRecord[] }>("/api/tasks"),
+        ]);
+
+        if (!active) return;
+        setState({
+          digest: digestResponse.digest,
+          report: reportResponse.report,
+          logs: logsResponse.logs || [],
+          tasks: tasksResponse.tasks || [],
+          loading: false,
+        });
+      } catch {
+        if (!active) return;
+        setState((current) => ({ ...current, loading: false }));
+      }
+    };
+
+    load();
+    const digestTimer = window.setInterval(load, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(digestTimer);
+    };
+  }, []);
+
+  const metrics = useMemo(() => {
+    const health = computeHealth(state.report, state.logs);
+    const lastExecution = state.logs[0]?.executed_at || null;
+    const activeTasks = state.tasks.filter((task) => task.is_active).length;
+    return {
+      health,
+      activeTasks,
+      uptime: formatDuration(state.report?.uptime),
+      lastExecution: formatTimestamp(lastExecution),
+    };
+  }, [state.logs, state.report, state.tasks]);
+
+  const summary = digestLines(state.digest, state.tasks, state.logs);
 
   return (
-    <>
-      {/* Ambient watermark — fixed positioning creates own stacking context */}
-      <div className="fixed top-8 right-8 text-[120px] font-black text-indigo-500/[0.08] select-none pointer-events-none hidden lg:block">
-        WATCHING
-      </div>
-
-      <div className="space-y-6 relative z-10">
-        {/* Page Header */}
-      <div className="flex items-start justify-between animate-fade-up">
-        <div>
-          <h1 className="text-3xl font-semibold text-[#F1F5F9] tracking-tight">Dashboard</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-sm text-[#94A3B8]">Your on-chain intelligence at a glance</span>
-            <span className="text-xs font-mono text-[#94A3B8] tabular-nums">
-              {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {now.toLocaleTimeString()}
-            </span>
+    <div className="page-frame route-fade">
+      <div className="page-intro">
+        <div className="space-y-3">
+          <Badge tone="accent">Morning desk</Badge>
+          <div className="space-y-2">
+            <h1 className="page-title">A calm intelligence layer for what changed and what needs attention.</h1>
+            <p className="page-copy">
+              The top of the desk briefs you. The lower half shows the agent quietly working through your live watch.
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setRefreshKey(k => k + 1)} className="w-9 h-9 rounded-lg bg-[#111118] border border-[#1E1E2E] hover:border-indigo-500/30 flex items-center justify-center text-[#94A3B8] hover:text-indigo-400 transition-all" title="Refresh">
-            <RefreshCw className="w-3.5 h-3.5" />
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="button-ghost" onClick={() => window.location.reload()} type="button">
+            <RefreshIcon className="h-4 w-4" />
+            Refresh
           </button>
-          <TaskCreator onCreated={() => setRefreshKey(k => k + 1)} />
+          <TaskCreator />
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-up animate-fade-up-delay-1">
-        <StatCard icon={<Zap className="w-4 h-4 text-white" />} label="Active Tasks" value={loading ? '—' : activeCount} accent="indigo" />
-        <StatCard icon={<Activity className="w-4 h-4 text-white" />} label="Executions Today" value={loading ? '—' : stats.total} accent="cyan" />
-        <StatCard icon={<Clock className="w-4 h-4 text-white" />} label="Success Rate" value={loading ? '—' : successRate} accent="emerald" />
-        <StatCard icon={<Eye className="w-4 h-4 text-white" />} label="Whales Watched" value={loading ? '—' : whaleCount} accent="amber" />
-      </div>
+      <div className="stagger-children space-y-6">
+        <Panel>
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Badge tone="accent">Signal digest</Badge>
+              <MonoText className="text-[0.78rem] uppercase tracking-[0.18em] text-text-secondary">{formatDateStamp(state.digest?.timestamp || now.toISOString())}</MonoText>
+            </div>
+            {state.loading ? (
+              <div className="space-y-3">
+                <div className="h-6 w-2/5 rounded-full bg-surface-2 animate-pulse" />
+                <div className="h-20 rounded-[1.2rem] bg-surface-2 animate-pulse" />
+              </div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+                <div className="space-y-4">
+                  <p className="max-w-[60ch] text-[1.02rem] leading-8 text-text-primary">
+                    {state.digest?.brief
+                      ? state.digest.brief.split("\n\n")[0]
+                      : "The first morning digest will appear here once ElizClaw has enough signals to brief."}
+                  </p>
+                </div>
+                <div className="grid gap-3">
+                  <div className="surface-row">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Market line</p>
+                    <p className="pt-2 text-[0.92rem] leading-7 text-text-primary">{summary.marketLine}</p>
+                  </div>
+                  <div className="surface-row">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Whale activity</p>
+                    <p className="pt-2 text-[0.92rem] leading-7 text-text-primary">{summary.whaleLine}</p>
+                  </div>
+                  <div className="surface-row">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Task line</p>
+                    <p className="pt-2 text-[0.92rem] leading-7 text-text-primary">{summary.tasksLine}</p>
+                  </div>
+                  <div className="surface-row">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">Top alert</p>
+                    <p className="pt-2 text-[0.92rem] leading-7 text-text-primary">{summary.alertLine}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Panel>
 
-      {/* Main Grid: Chat (60%) + Activity (40%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-fade-up animate-fade-up-delay-2">
-        {/* Chat — 60% */}
-        <div className="lg:col-span-3 card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-[#F1F5F9]">Talk to ElizClaw</h2>
-            <div className="flex items-center gap-1.5">
-              <span className="live-dot" />
-              <span className="text-[11px] text-emerald-400 font-medium">Live</span>
+        <Panel>
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <LiveDot />
+                <Badge>Agent status</Badge>
+              </div>
+              <MonoText className="text-[0.76rem] uppercase tracking-[0.18em] text-text-secondary">{formatTimestamp(now.toISOString())}</MonoText>
+            </div>
+            <div className="grid gap-4 md:grid-cols-4">
+              <StatCard detail="Synthetic score from success, uptime, and recent activity." label="Agent health" value={`${metrics.health}/100`} />
+              <StatCard detail="Live runtime reported by the server." label="Uptime" value={metrics.uptime} />
+              <StatCard detail="Active tasks currently under watch." label="Tasks active" value={`${metrics.activeTasks}`} />
+              <StatCard detail="Most recent recorded execution." label="Last execution" value={metrics.lastExecution} />
             </div>
           </div>
-          <ChatWindow />
-        </div>
+        </Panel>
 
-        {/* Activity Feed — 40% */}
-        <div className="lg:col-span-2 card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-[#F1F5F9]">Live Activity</h2>
-            <span className="text-[11px] text-[#94A3B8]">Auto-refreshes every 30s</span>
-          </div>
-          <ActivityFeed />
+        <div className="section-grid">
+          <Panel className="h-full">
+            <ChatWindow />
+          </Panel>
+
+          <Panel className="h-full">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Badge>Live activity</Badge>
+                <p className="max-w-[36ch] text-[0.86rem] leading-6 text-text-secondary">
+                  Recent runs and monitored whale moves. Both surfaces refresh every half minute.
+                </p>
+              </div>
+              <ActivityFeed />
+              <Divider />
+              <div className="space-y-3">
+                <Badge>Whale timeline</Badge>
+                <WhaleTimeline />
+              </div>
+            </div>
+          </Panel>
         </div>
       </div>
-
-      {/* Whale Timeline */}
-      <div className="card animate-fade-up animate-fade-up-delay-3">
-        <h2 className="text-sm font-semibold text-[#F1F5F9] mb-4">Whale Watch</h2>
-        <WhaleTimeline />
-      </div>
-      </div>
-    </>
+    </div>
   );
 }

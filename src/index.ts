@@ -7,7 +7,6 @@ import {
   type Character,
 } from "@elizaos/core";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
-import { createNodePlugin } from "@elizaos/plugin-node";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
@@ -37,8 +36,6 @@ export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
   return new Promise((resolve) => setTimeout(resolve, waitTime));
 };
 
-let nodePlugin: any | undefined;
-
 export function createAgent(
   character: Character,
   db: any,
@@ -49,9 +46,6 @@ export function createAgent(
     "Creating runtime for character",
     character.name,
   );
-
-  nodePlugin ??= createNodePlugin();
-
   return new AgentRuntime({
     databaseAdapter: db,
     token,
@@ -60,7 +54,6 @@ export function createAgent(
     character,
     plugins: [
       bootstrapPlugin,
-      nodePlugin,
     ],
     providers: [],
     actions: [],
@@ -199,7 +192,7 @@ async function refreshWatchlistItems(items: any[]) {
  *   POST /api/chat        — proxy chat messages to agent message endpoint
  *   GET  /*               — static files (Next.js export output)
  */
-function attachDashboard(app: express.Application, agentId: string) {
+function attachDashboard(app: express.Application, getAgentId: () => string) {
   const isProduction = process.env.NODE_ENV === "production";
 
   // ── Rate limiting on chat endpoint (most expensive — hits LLM) ──
@@ -523,6 +516,7 @@ function attachDashboard(app: express.Application, agentId: string) {
       if (!message) return res.status(400).json({ error: "Message required" });
 
       const agentUrl = `http://localhost:${process.env.SERVER_PORT || 3000}`;
+      const agentId = getAgentId();
       const fetchRes = await fetch(`${agentUrl}/${agentId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -591,18 +585,11 @@ const startAgents = async () => {
   let charactersArg = args.characters || args.character;
   let characters = [character];
   const runtimes = [];
+  let activeAgentId = characters[0]?.name || "elizclaw";
 
   if (charactersArg) {
     characters = await loadCharacters(charactersArg);
-  }
-
-  try {
-    for (const character of characters) {
-      const runtime = await startAgent(character, directClient as DirectClient);
-      runtimes.push(runtime);
-    }
-  } catch (error) {
-    elizaLogger.error("Error starting agents:", error);
+    activeAgentId = characters[0]?.name || activeAgentId;
   }
 
   while (!(await checkPortAvailable(serverPort))) {
@@ -620,18 +607,30 @@ const startAgents = async () => {
     elizaLogger.log(`Server started on alternate port ${serverPort}`);
   }
 
-  const primaryRuntime = runtimes[0];
-  if (primaryRuntime?.agentId) {
-    startScheduler({ agentId: primaryRuntime.agentId, serverPort });
-  }
-
   // ── Attach dashboard static files + API routes for single-port deployment ──
   // This serves the Next.js static export and task/chat/logs APIs on the same
   // Express server that runs the agent. Enables Nosana deployment on a single port.
   attachDashboard(
     directClient.app as express.Application,
-    primaryRuntime?.agentId || characters[0]?.name || "elizclaw",
+    () => activeAgentId,
   );
+
+  try {
+    for (const character of characters) {
+      const runtime = await startAgent(character, directClient as DirectClient);
+      runtimes.push(runtime);
+      if (runtime?.agentId) {
+        activeAgentId = runtime.agentId;
+      }
+    }
+  } catch (error) {
+    elizaLogger.error("Error starting agents:", error);
+  }
+
+  const primaryRuntime = runtimes[0];
+  if (primaryRuntime?.agentId) {
+    startScheduler({ agentId: primaryRuntime.agentId, serverPort });
+  }
 
   const isDaemonProcess = process.env.DAEMON_PROCESS === "true";
   if(!isDaemonProcess) {

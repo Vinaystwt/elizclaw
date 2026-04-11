@@ -1,149 +1,216 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { Send, TrendingUp, Eye, Wallet } from 'lucide-react';
 
-/**
- * ChatWindow — natural language interface to the agent.
- * Redesigned with indigo/gray palette, agent prefix, and prompt chips.
- */
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/Badge";
+import { MonoText } from "@/components/ui/MonoText";
+import { Panel } from "@/components/ui/Panel";
+import { fetchJson } from "@/lib/api";
+import { formatTimestamp } from "@/lib/format";
 
-function formatMessage(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-}
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  highlight?: boolean;
+};
 
-const promptChips = [
-  { icon: TrendingUp, iconColor: 'text-amber-400', label: 'Check BTC price every morning', value: 'Check BTC price every morning and alert me if above $100k' },
-  { icon: Eye, iconColor: 'text-red-400', label: "What's happening in crypto?", value: "What's happening in the crypto market?" },
-  { icon: Wallet, iconColor: 'text-indigo-400', label: 'Track wallet [address]', value: 'Track wallet ' },
+type WorkingState = "idle" | "thinking" | "fetching" | "cross-referencing" | "digest ready";
+
+const prompts = [
+  "What moved overnight?",
+  "Morning brief",
+  "Check my watchlist",
+  "Any whale activity?",
 ];
 
+const stateCopy: Record<Exclude<WorkingState, "idle">, string> = {
+  thinking: "ElizClaw is working...",
+  fetching: "Fetching on-chain data...",
+  "cross-referencing": "Cross-referencing whale activity...",
+  "digest ready": "Digest ready.",
+};
+
+function createId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function splitSections(content: string) {
+  return content
+    .split(/\n{2,}/)
+    .map((section) => section.trim())
+    .filter(Boolean);
+}
+
 export function ChatWindow() {
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [workingState, setWorkingState] = useState<WorkingState>("idle");
+  const [submitting, setSubmitting] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, workingState]);
+
   const hasMessages = messages.length > 0;
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  const assistantStatus = useMemo(() => {
+    if (workingState === "idle") return null;
+    return stateCopy[workingState];
+  }, [workingState]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
-    setInput('');
-    setLoading(true);
+  async function sendMessage(seed?: string) {
+    const nextPrompt = (seed ?? input).trim();
+    if (!nextPrompt || submitting) return;
+
+    const userMessage: Message = {
+      id: createId(),
+      role: "user",
+      content: nextPrompt,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((current) => [...current, userMessage]);
+    setInput("");
+    setSubmitting(true);
+    setWorkingState("thinking");
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg }),
+      await new Promise((resolve) => setTimeout(resolve, 850));
+      setWorkingState("fetching");
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      setWorkingState("cross-referencing");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const data = await fetchJson<{ response?: string }>("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: nextPrompt }),
       });
-      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Processing...' }]);
+
+      setWorkingState("digest ready");
+      const assistantMessage: Message = {
+        id: createId(),
+        role: "assistant",
+        content: data.response || "The desk is quiet right now.",
+        createdAt: new Date().toISOString(),
+        highlight: true,
+      };
+      setMessages((current) => [...current, assistantMessage]);
+
+      window.setTimeout(() => {
+        setMessages((current) => current.map((message) => (message.id === assistantMessage.id ? { ...message, highlight: false } : message)));
+        setWorkingState("idle");
+      }, 520);
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "Can't connect right now. The agent may be offline.",
-      }]);
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          role: "assistant",
+          content: "The agent is quiet for the moment. Try again shortly.",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      setWorkingState("idle");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="flex flex-col h-[480px]">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
-            {msg.role === 'assistant' ? (
-              <div className="flex flex-col gap-1 max-w-[85%]">
-                <span className="text-[10px] font-mono text-indigo-400 font-bold ml-1">ELIZCLAW</span>
-                <div className="bg-[#111118] border border-[#1E1E2E] rounded-2xl rounded-tl-md px-4 py-3 text-[13px] leading-relaxed text-[#E2E8F0] whitespace-pre-wrap">
-                  {formatMessage(msg.content)}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-indigo-500/20 border border-indigo-500/30 rounded-2xl rounded-tr-md px-4 py-3 text-[13px] leading-relaxed text-slate-200 max-w-[75%]">
-                {msg.content}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {loading && (
-          <div className="flex justify-start animate-slide-in">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-mono text-indigo-400 font-bold ml-1">ELIZCLAW</span>
-              <div className="bg-[#111118] border border-[#1E1E2E] rounded-2xl rounded-tl-md px-4 py-3.5">
-                <div className="flex gap-1.5">
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Welcome state — shows only before first message */}
-        {!hasMessages && !loading && (
-          <div className="flex flex-col justify-between h-full">
-            <div className="flex justify-start animate-slide-in">
-              <div className="flex flex-col gap-3 max-w-[90%]">
-                <span className="text-[10px] font-mono text-indigo-400 font-bold ml-1">ELIZCLAW</span>
-                <div className="bg-[#111118] border border-[#1E1E2E] rounded-2xl rounded-tl-md px-5 py-4">
-                  <p className="text-[14px] text-[#F1F5F9] font-medium mb-1">Your on-chain sentinel is active and watching.</p>
-                  <p className="text-[12px] text-[#94A3B8]">Tell me what to automate in plain English:</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {promptChips.map((chip) => (
-                    <button
-                      key={chip.label}
-                      onClick={() => setInput(chip.value)}
-                      className="flex items-center gap-2 border border-[#1E1E2E] rounded-xl p-3 text-left hover:border-indigo-500/30 transition-all duration-200 cursor-pointer"
-                    >
-                      <chip.icon className={`w-4 h-4 flex-shrink-0 ${chip.iconColor}`} />
-                      <span className="text-[12px] text-[#94A3B8] leading-tight">{chip.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="text-center text-[10px] text-[#1E1E2E] font-mono select-none pointer-events-none py-4">
-              Monitoring 24/7 · Powered by Qwen3.5-27B · Deployed on Nosana
-            </div>
-          </div>
-        )}
-
-        <div ref={endRef} />
+    <div className="flex h-full min-h-[34rem] flex-col">
+      <div className="flex items-center justify-between gap-4 pb-4">
+        <div className="space-y-2">
+          <Badge tone="accent">Chat brain</Badge>
+          <p className="max-w-[42ch] text-[0.86rem] leading-6 text-text-secondary">
+            Ask for the overnight brief, watchlist context, whale overlap, or alert rationale.
+          </p>
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="flex gap-2">
+      <div className="flex-1 overflow-y-auto pr-1" ref={scrollerRef}>
+        {!hasMessages ? (
+          <div className="flex min-h-full flex-col justify-between gap-8">
+            <div className="space-y-4">
+              <Panel innerClassName="space-y-4">
+                <Badge tone="neutral">ElizClaw</Badge>
+                <div className="space-y-2">
+                  <h3 className="text-[1.18rem] font-semibold tracking-[-0.04em] text-text-primary">A calm analyst, already listening.</h3>
+                  <p className="max-w-[42ch] text-[0.94rem] leading-7 text-text-secondary">
+                    Start with the morning brief, ask what changed, or pull a watchlist read without leaving the desk.
+                  </p>
+                </div>
+              </Panel>
+              <div className="grid gap-3 md:grid-cols-2">
+                {prompts.map((prompt) => (
+                  <button className="surface-row text-left hover:border-accent hover:bg-surface-3" key={prompt} onClick={() => sendMessage(prompt)} type="button">
+                    <p className="text-[0.84rem] uppercase tracking-[0.18em] text-text-muted">Suggested prompt</p>
+                    <p className="pt-2 text-[0.96rem] text-text-primary">{prompt}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <MonoText className="pb-2 text-[0.72rem] uppercase tracking-[0.18em] text-text-muted">Agent ready on the same desk you wake up to.</MonoText>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message) => {
+              const sections = splitSections(message.content);
+              return (
+                <article className={`rounded-[1.55rem] border px-4 py-4 transition-colors duration-300 ${message.highlight ? "border-accent bg-surface-3" : "border-border bg-surface-2"}`} key={message.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Badge tone={message.role === "assistant" ? "accent" : "neutral"}>
+                      {message.role === "assistant" ? "ElizClaw" : "You"}
+                    </Badge>
+                    <MonoText className="text-[0.72rem] uppercase tracking-[0.16em] text-text-muted">{formatTimestamp(message.createdAt)}</MonoText>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {sections.map((section, index) => (
+                      <Panel className="bg-transparent p-0 shadow-none" innerClassName="rounded-[1.2rem] border border-border bg-transparent px-0 py-0" key={`${message.id}-${index}`}>
+                        <div className="space-y-2 px-0 py-0">
+                          <p className="text-[0.94rem] leading-7 text-text-primary">{section}</p>
+                        </div>
+                      </Panel>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+
+            {assistantStatus ? (
+              <div className={`rounded-[1.5rem] border px-4 py-4 ${workingState === "digest ready" ? "border-accent bg-surface-3" : "border-border bg-surface-2"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <Badge tone="neutral">Status</Badge>
+                  <MonoText className="text-[0.72rem] uppercase tracking-[0.16em] text-text-muted">{formatTimestamp(new Date().toISOString())}</MonoText>
+                </div>
+                <p className="mt-4 flex items-center gap-2 text-[0.9rem] text-text-secondary">
+                  <span className="thinking inline-flex h-2 w-8 rounded-full bg-accent" />
+                  {assistantStatus}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 flex items-center gap-3 border-t border-border pt-4">
         <input
-          type="text"
+          className="input-base flex-1"
+          disabled={submitting}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendMessage();
+            }
+          }}
+          placeholder="Ask for the brief, a watchlist check, or an alert rationale"
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Tell ElizClaw what to automate..."
-          className="input-field flex-1 text-[13px]"
-          disabled={loading}
         />
-        <button
-          onClick={send}
-          disabled={loading || !input.trim()}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed text-white w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200"
-        >
-          <Send className="w-4 h-4" />
+        <button className="button-primary" disabled={submitting || !input.trim()} onClick={() => sendMessage()} type="button">
+          Send
         </button>
       </div>
     </div>
