@@ -234,6 +234,10 @@ async function refreshWatchlistItems(items: any[]) {
  */
 function attachDashboard(app: express.Application, getAgentId: () => string) {
   const isProduction = process.env.NODE_ENV === "production";
+  const frontendOutCandidates = isProduction
+    ? ["/app/frontend/out", path.join(process.cwd(), "frontend/out")]
+    : [path.join(process.cwd(), "frontend/out")];
+  const frontendOut = frontendOutCandidates.find((candidate) => fs.existsSync(candidate));
 
   // ── Rate limiting on chat endpoint (most expensive — hits LLM) ──
   const chatLimiter = rateLimit({
@@ -587,8 +591,7 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
 
   // ── Static files (production only) ──
   if (isProduction) {
-    const frontendOut = path.join(__dirname, "../frontend/out");
-    if (fs.existsSync(frontendOut)) {
+    if (frontendOut) {
       app.use(express.static(frontendOut));
 
       // SPA fallback — serve index.html for non-API, non-file routes
@@ -651,8 +654,6 @@ const startAgents = async () => {
     return startAgent(character, directClient);
   };
 
-  app.use(directClient.app as express.Application);
-
   // ── Attach dashboard static files + API routes for single-port deployment ──
   // This serves the Next.js static export and task/chat/logs APIs on the same
   // Express server that runs the agent. Enables Nosana deployment on a single port.
@@ -660,6 +661,10 @@ const startAgents = async () => {
     app,
     () => activeAgentId,
   );
+
+  // Mount DirectClient routes after dashboard/static handlers so the
+  // default REST API welcome route does not override the frontend root URL.
+  app.use(directClient.app as express.Application);
 
   await new Promise<void>((resolve, reject) => {
     const server = app.listen(serverPort, () => {

@@ -824,3 +824,31 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - `sharp` runtime dependency issue is fixed.
 - Local production startup remains healthy.
 - Latest Docker image on Docker Hub includes the `sharp` fix for Nosana.
+
+## 23. SESSION 18 — Static Frontend Routing Fix For Nosana Root URL
+
+### Root cause
+- Nosana health checks succeeded, but the root URL returned `Welcome, this is the REST API!` instead of the dashboard HTML.
+- The top-level Express app mounted `directClient.app` before the dashboard routes, so DirectClient's default `GET /` route handled the request first.
+- Production static path handling also needed to support both the container path (`/app/frontend/out`) and local production verification.
+
+### Fix applied
+- Reordered route mounting in `src/runtime.ts` so `attachDashboard(app, ...)` runs before `app.use(directClient.app)`.
+- This ensures the dashboard root, static assets, and SPA fallback take precedence over DirectClient's default REST welcome route.
+- Updated production static path resolution to prefer `/app/frontend/out` in the container and fall back to `path.join(process.cwd(), "frontend/out")` during local production tests.
+- Kept the SPA catch-all route after dashboard API routes and before DirectClient mount.
+
+### Verification
+- `bun run build` passes after the routing fix.
+- Local production verification now returns HTML at the root URL:
+  - `curl -s http://localhost:3000/ | head -c 200` starts with `<!DOCTYPE html><html...`
+  - `curl -s http://localhost:3000/health` still returns `{status:"ok"...}`
+
+### Docker publish
+- Rebuilt and pushed the Docker image with the corrected static frontend routing.
+- New pushed image digest: `sha256:486851927dd43ebaef1400bd3a501db9dde36c348bbf916b222535d5b898f811`
+
+### Current state after Session 18
+- Root URL now serves the dashboard HTML instead of the REST API welcome text.
+- Health endpoint remains healthy.
+- Latest Docker image includes the static frontend routing fix for Nosana deployment.
