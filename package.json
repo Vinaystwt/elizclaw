@@ -17,7 +17,6 @@
     "@elizaos/client-direct": "0.1.9",
     "@elizaos/core": "0.1.9",
     "@elizaos/plugin-bootstrap": "0.1.9",
-    "@elizaos/plugin-node": "0.1.9",
     "@tavily/core": "0.0.2",
     "express-rate-limit": "^8.3.2",
     "p-queue": "^9.1.1",

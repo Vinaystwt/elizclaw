@@ -764,3 +764,35 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Retry Vercel production deploy and capture the final URL.
 - Run Docker build + push once daemon access is granted.
 - Commit Session 15 changes with commit-tree and push when deployment/package steps are complete.
+
+## 21. SESSION 16 — Production Startup Fix + Docker Publish
+
+### Runtime and dependency fixes
+- Removed `@elizaos/plugin-node` from `package.json` and lockfile so `LlamaService` is no longer installed or available to block startup.
+- Split runtime bootstrap so `src/index.ts` sets hard guards before import: `LLAMALOCAL_PATH=''`, `OLLAMA_SERVER_URL=''`, `OLLAMA_MODEL=''`, `USE_OPENAI_EMBEDDING='true'`, `USE_OLLAMA_EMBEDDING='false'`.
+- Moved the main runtime implementation into `src/runtime.ts` so those environment guards execute before ElizaOS modules load.
+- Updated `src/chat/index.ts` to create `readline` only when interactive chat starts instead of at module import time, removing a headless startup side effect.
+
+### Port binding and health check fix
+- Reworked production startup so the top-level Express server binds port `3000` immediately, mounts `directClient.app`, and exposes dashboard/API routes before slow agent initialization begins.
+- Moved ElizaOS agent initialization into a background async path after the server bind, so `/health` is available even while `AgentRuntime.initialize()` is still running.
+- Removed the old preflight port-probing path and now bind directly to the required port with explicit listen error handling.
+- Production verification now succeeds with health responding in under 10 seconds while the agent continues initializing in the background.
+
+### Verification results
+- `bun run build` passes after the startup refactor.
+- Production health check succeeds:
+  - Command: `OPENAI_API_KEY=test OPENAI_API_URL=http://localhost:8000/v1 NODE_ENV=production node dist/index.js`
+  - `curl -s --max-time 5 http://localhost:3000/health` returned success in under 10 seconds.
+- 25-second verification also succeeds and shows the scheduler starting while health remains available.
+
+### Docker publish status
+- Docker Desktop was started and the image was rebuilt successfully.
+- New pushed image digest: `sha256:2252f7d46dfc423297eb772c6eb9a20c7ae52c89cbb1ccf196874caf3e1f42f2`
+- Local image tag: `vinaystwt/elizclaw:latest`
+
+### Current state after Session 16
+- `LlamaService` startup blocker is removed.
+- Port `3000` binds before agent initialization.
+- Health endpoint is confirmed working under the required startup window.
+- Docker image is rebuilt and pushed with the updated production startup fix.

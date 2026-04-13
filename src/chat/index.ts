@@ -1,17 +1,11 @@
 import { settings } from "@elizaos/core";
 import readline from "readline";
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-rl.on("SIGINT", () => {
-  rl.close();
-  process.exit(0);
-});
-
-async function handleUserInput(input, agentId) {
+async function handleUserInput(
+  rl: readline.Interface,
+  input,
+  agentId,
+) {
   if (input.toLowerCase() === "exit") {
     rl.close();
     process.exit(0);
@@ -41,10 +35,20 @@ async function handleUserInput(input, agentId) {
 }
 
 export function startChat(characters) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  rl.on("SIGINT", () => {
+    rl.close();
+    process.exit(0);
+  });
+
   function chat() {
     const agentId = characters[0].name ?? "Agent";
     rl.question("You: ", async (input) => {
-      await handleUserInput(input, agentId);
+      await handleUserInput(rl, input, agentId);
       if (input.toLowerCase() !== "exit") {
         chat(); // Loop back to ask another question
       }
