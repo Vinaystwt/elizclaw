@@ -796,3 +796,31 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Port `3000` binds before agent initialization.
 - Health endpoint is confirmed working under the required startup window.
 - Docker image is rebuilt and pushed with the updated production startup fix.
+
+## 22. SESSION 17 — Sharp Runtime Fix For Nosana
+
+### Root cause
+- Nosana container logs showed `Cannot find package 'sharp' from '/app/node_modules/@elizaos/core/dist/index.js'`.
+- `@elizaos/core` expects `sharp` to be present at runtime for image-related code paths even when ElizClaw does not explicitly import it.
+
+### Fix applied
+- Added `sharp` as a direct dependency in `package.json`.
+- Updated `bun.lock` to include the `sharp` package and its platform-specific optional packages.
+- No runtime stub was needed because the package installation path worked.
+
+### Verification
+- `bun add sharp` completed successfully.
+- `bun run build` passes after adding the dependency.
+- Production smoke test passes:
+  - `NODE_ENV=production OPENAI_API_KEY=test OPENAI_API_URL=http://localhost:8000/v1 node dist/index.js`
+  - `curl -s http://localhost:3000/health` returned OK after 15 seconds.
+- Smoke test logs showed no `sharp` import error.
+
+### Docker publish
+- Rebuilt the container image with `sharp` included.
+- New pushed image digest: `sha256:a79564a8a3ed0e85da199cdb2043985c9621c860e3ead2cfe658ea4f81428b0e`
+
+### Current state after Session 17
+- `sharp` runtime dependency issue is fixed.
+- Local production startup remains healthy.
+- Latest Docker image on Docker Hub includes the `sharp` fix for Nosana.
