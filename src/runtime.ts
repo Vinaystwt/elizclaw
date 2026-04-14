@@ -622,7 +622,7 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
         enhancedMessage = `[AGENT_REPORT] ${userMessage}`;
       }
 
-      const runtime = await waitForRuntime(5, 1000);
+      const runtime = await waitForRuntime(8, 1500);
       if (!runtime) {
         return res.json({
           response: "The agent is quiet for the moment. Try again shortly.",
@@ -640,7 +640,7 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
       if (!fetchRes.ok) {
         return res.status(fetchRes.status).json({
           error: `Agent returned ${fetchRes.status}`,
-          response: "The agent is processing your request. Please try again.",
+          response: "The agent is quiet for the moment. Try again shortly.",
         });
       }
 
@@ -652,7 +652,7 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
       res.json({ response: response || "Task queued successfully.", source: "agent" });
     } catch {
       res.json({
-        response: "The agent is currently offline. Please try again shortly.",
+        response: "The agent is quiet for the moment. Try again shortly.",
         source: "simulated",
       });
     }
