@@ -22,6 +22,7 @@ RUN bun install
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/frontend/out ./frontend/out
+COPY scripts/ ./scripts/
 COPY src ./src
 COPY start.mjs ./
 

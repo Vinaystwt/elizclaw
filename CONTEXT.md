@@ -966,3 +966,35 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Dashboard and report page health scores are aligned.
 - Model selection and embedding defaults are env-driven.
 - The Nosana deployment URL remains unchanged; these fixes are code-only and ready for a later Docker revision on the same deployment.
+
+## 26. SESSION 21 — Docker Rebuild With Startup Seeding For Nosana
+
+### Goal
+- Ensure the Docker image always boots with demo data already seeded so the live Nosana deployment shows realistic activity immediately after startup.
+- Keep the existing Nosana deployment URL unchanged and use the new image later via "Create Revision" on the same deployment.
+
+### Changes applied
+- Updated `start.mjs` to run `node scripts/seed-demo-data.mjs` once on startup before the agent process launches.
+- The startup seeding block uses `execSync(..., { cwd: "/app", stdio: "inherit" })` and logs:
+  - `Seed data initialized` on success
+  - `Seed script skipped: ...` on failure
+- Updated `Dockerfile` to copy the repository `scripts/` directory into the runtime image:
+  - `COPY scripts/ ./scripts/`
+
+### Dockerfile verification
+- Port `3000` remains exposed.
+- `start.mjs` remains the container command entrypoint:
+  - `CMD ["bun", "run", "start.mjs"]`
+- `scripts/` is now copied into the runtime image.
+- `/app/data` continues to be created during image build.
+
+### Docker rebuild + publish
+- Rebuilt `vinaystwt/elizclaw:latest` locally after the startup-seeding change.
+- Pushed the rebuilt image to Docker Hub successfully.
+- New pushed digest:
+  - `sha256:c5d701f462c86d01f299027bcddc1b664dcd20c1b54c519aab625a711cb8ad0d`
+
+### Current state after Session 21
+- Container startup now seeds demo data automatically before the agent starts.
+- The Docker image is rebuilt and published with the startup seeding change.
+- The Nosana URL should remain the same when this image is deployed through a revision on the existing deployment.

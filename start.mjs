@@ -141,6 +141,18 @@ function shutdown() {
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
+// Run seed script on startup for demo data
+try {
+  const { execSync } = await import("child_process");
+  execSync("node scripts/seed-demo-data.mjs", {
+    cwd: "/app",
+    stdio: "inherit",
+  });
+  console.log("Seed data initialized");
+} catch (e) {
+  console.log("Seed script skipped:", e.message);
+}
+
 startAgent();
 
 if (isProduction) {
