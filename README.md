@@ -69,19 +69,22 @@ Try these in the chat:
 ---
 
 ## Architecture
+```text
 ElizClaw Container (Port 3000)
-├── ElizaOS Agent v2 (Runtime)
+├── ElizaOS Agent v2
 │   ├── 13 Custom Actions
-│   │   ├── price_monitor      whale_watcher
-│   │   ├── signal_monitor     signal_digest
-│   │   ├── wallet_tracker     agent_report_card
-│   │   ├── watchlist          web_scrape
-│   │   └── api_call  prediction_market  price_guess
+│   │   ├── price_monitor    whale_watcher
+│   │   ├── signal_monitor   signal_digest
+│   │   ├── wallet_tracker   agent_report_card
+│   │   ├── watchlist        web_scrape
+│   │   └── api_call   prediction_market   price_guess
 │   ├── 3 Context Providers + 1 Evaluator
 │   └── Background Task Scheduler (60s polling)
 ├── Express API (11 endpoints)
 └── Next.js Dashboard (static export)
+
 Deployed on Nosana GPU Network — NVIDIA RTX 3060
+```
 
 ---
 
@@ -90,6 +93,7 @@ Deployed on Nosana GPU Network — NVIDIA RTX 3060
 | Layer | Technology |
 |-------|-----------|
 | Agent Framework | ElizaOS v2 |
+| Model Runtime | Groq (llama-3.1-8b-instant) |
 | Runtime | Bun + TypeScript |
 | Frontend | Next.js 14 (static export) |
 | Design | Plus Jakarta Sans + JetBrains Mono |
@@ -97,8 +101,8 @@ Deployed on Nosana GPU Network — NVIDIA RTX 3060
 | Container | Docker |
 | Data | CoinGecko · Helius · Jupiter APIs |
 
-Works with any OpenAI-compatible endpoint.  
-Configure via `OPENAI_API_URL` + `OPENAI_MODEL` env vars.
+Compatible with any OpenAI-compatible endpoint.  
+Defaults to llama-3.1-8b-instant via Groq.
 
 ---
 
