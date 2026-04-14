@@ -28,12 +28,21 @@ import { fetchCoinQuote, coinMap } from "./plugins/actions/watchlist.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let globalRuntime: AgentRuntime | null = null;
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
   const waitTime =
     Math.floor(Math.random() * (maxTime - minTime + 1)) + minTime;
   return new Promise((resolve) => setTimeout(resolve, waitTime));
 };
+
+async function waitForRuntime(retries: number, delayMs: number) {
+  for (let i = 0; i < retries; i += 1) {
+    if (globalRuntime) return globalRuntime;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return null;
+}
 
 export function createAgent(
   character: Character,
@@ -86,6 +95,7 @@ async function startAgent(character: Character, directClient: DirectClient) {
     runtime.clients = await initializeClients(character, runtime);
 
     directClient.registerAgent(runtime);
+    globalRuntime = runtime;
 
     elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
 
@@ -560,9 +570,16 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
       const { message } = req.body;
       if (!message) return res.status(400).json({ error: "Message required" });
 
+      const runtime = await waitForRuntime(5, 1000);
+      if (!runtime) {
+        return res.json({
+          response: "The agent is quiet for the moment. Try again shortly.",
+          source: "simulated",
+        });
+      }
+
       const agentUrl = `http://localhost:${process.env.SERVER_PORT || 3000}`;
-      const agentId = getAgentId();
-      const fetchRes = await fetch(`${agentUrl}/${agentId}/message`, {
+      const fetchRes = await fetch(`${agentUrl}/${runtime.agentId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: message, roomId: "web-ui", userId: "web-user" }),
