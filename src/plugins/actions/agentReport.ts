@@ -15,6 +15,7 @@ export const agentReportAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[agent_report]")) return true;
     return text.includes("performing")
       || text.includes("report card")
       || text.includes("health")

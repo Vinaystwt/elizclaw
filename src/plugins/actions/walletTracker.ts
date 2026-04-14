@@ -223,6 +223,7 @@ export const walletTrackerAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[wallet_tracker]")) return true;
     return text.includes("wallet")
       || text.includes("track wallet")
       || text.includes("address")

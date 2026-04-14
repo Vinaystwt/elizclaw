@@ -53,6 +53,7 @@ export const watchlistAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[watchlist]")) return true;
     return text.includes("watchlist")
       || text.includes("watch list")
       || text.includes("my coins")

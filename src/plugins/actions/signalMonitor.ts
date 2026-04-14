@@ -194,6 +194,7 @@ export const signalMonitorAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[signal_monitor]")) return true;
     return text.includes("crypto")
       || text.includes("market")
       || text.includes("signal")

@@ -110,6 +110,7 @@ export const whaleWatcherAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[whale_watcher]")) return true;
     return text.includes("whale")
       || text.includes("whale activity")
       || text.includes("large move")

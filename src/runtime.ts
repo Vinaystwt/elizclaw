@@ -44,6 +44,33 @@ async function waitForRuntime(retries: number, delayMs: number) {
   return null;
 }
 
+function detectIntent(text: string): string | null {
+  const t = text.toLowerCase();
+
+  if (t.match(/price|btc|eth|sol|coin|how much|worth|trading at|market price|what.*(cost|worth)/))
+    return "PRICE";
+
+  if (t.match(/whale|big move|large transaction|smart money|institutional|accumulate|dump/))
+    return "WHALE";
+
+  if (t.match(/wallet|address|track|holdings|portfolio|follow.*wallet/))
+    return "WALLET";
+
+  if (t.match(/brief|digest|morning|summary|overnight|what happened|catch me up|update me|daily/))
+    return "DIGEST";
+
+  if (t.match(/market|crypto|signal|trending|happening|bullish|bearish|sentiment|overview/))
+    return "SIGNAL";
+
+  if (t.match(/watchlist|watching|my coins|add.*coin|remove.*coin/))
+    return "WATCHLIST";
+
+  if (t.match(/health|performing|status|report card|how.*agent|uptime|success rate/))
+    return "REPORT";
+
+  return null;
+}
+
 export function createAgent(
   character: Character,
   db: any,
@@ -567,8 +594,33 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
   // ── Chat proxy ──
   app.post("/api/chat", express.json(), chatLimiter, async (req: any, res: any) => {
     try {
-      const { message } = req.body;
-      if (!message) return res.status(400).json({ error: "Message required" });
+      const { message: userMessage } = req.body;
+      if (!userMessage) return res.status(400).json({ error: "Message required" });
+
+      const intent = detectIntent(userMessage);
+      let enhancedMessage = userMessage;
+
+      if (intent === "PRICE") {
+        enhancedMessage = `[MONITOR_PRICE] ${userMessage}`;
+      }
+      if (intent === "WHALE") {
+        enhancedMessage = `[WHALE_WATCHER] ${userMessage}`;
+      }
+      if (intent === "WALLET") {
+        enhancedMessage = `[WALLET_TRACKER] ${userMessage}`;
+      }
+      if (intent === "DIGEST") {
+        enhancedMessage = `[SIGNAL_DIGEST] ${userMessage}`;
+      }
+      if (intent === "SIGNAL") {
+        enhancedMessage = `[SIGNAL_MONITOR] ${userMessage}`;
+      }
+      if (intent === "WATCHLIST") {
+        enhancedMessage = `[WATCHLIST] ${userMessage}`;
+      }
+      if (intent === "REPORT") {
+        enhancedMessage = `[AGENT_REPORT] ${userMessage}`;
+      }
 
       const runtime = await waitForRuntime(5, 1000);
       if (!runtime) {
@@ -582,7 +634,7 @@ function attachDashboard(app: express.Application, getAgentId: () => string) {
       const fetchRes = await fetch(`${agentUrl}/${runtime.agentId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: message, roomId: "web-ui", userId: "web-user" }),
+        body: JSON.stringify({ text: enhancedMessage, roomId: "web-ui", userId: "web-user" }),
       });
 
       if (!fetchRes.ok) {

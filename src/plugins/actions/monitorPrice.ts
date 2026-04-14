@@ -14,6 +14,7 @@ export const monitorPriceAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[monitor_price]")) return true;
     return text.includes("monitor")
       || text.includes("alert")
       || text.includes("price")

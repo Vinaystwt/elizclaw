@@ -40,6 +40,7 @@ export const signalDigestAction: Action = {
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
+    if (text.startsWith("[signal_digest]")) return true;
     return text.includes("brief")
       || text.includes("digest")
       || text.includes("morning")
