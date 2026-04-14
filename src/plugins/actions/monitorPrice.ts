@@ -13,10 +13,20 @@ export const monitorPriceAction: Action = {
   description: "Fetch current crypto price with optional threshold alerting",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
-    return /(price|monitor|track|watch|check.*(btc|eth|sol|crypto|coin))/i.test(lower)
-      && /(btc|bitcoin|eth|ethereum|sol|solana|doge|ada|avax|matic|bnb|xrp)/i.test(lower);
+    const text = ((message.content as any)?.text || "").toLowerCase();
+    return text.includes("monitor")
+      || text.includes("alert")
+      || text.includes("price")
+      || text.includes("watch")
+      || (
+        text.includes("track")
+        && (
+          text.includes("btc")
+          || text.includes("eth")
+          || text.includes("sol")
+          || text.includes("coin")
+        )
+      );
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {

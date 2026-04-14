@@ -14,9 +14,12 @@ export const agentReportAction: Action = {
   description: "Generate a first-person performance report of the agent's execution history",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
-    return /how are you (performing|doing)|your performance|self report|status report/i.test(lower);
+    const text = ((message.content as any)?.text || "").toLowerCase();
+    return text.includes("performing")
+      || text.includes("report card")
+      || text.includes("health")
+      || text.includes("how are you")
+      || text.includes("status");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {

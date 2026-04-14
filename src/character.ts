@@ -10,6 +10,10 @@ export const character: Character = {
   modelProvider: ModelProviderName.OPENAI,
   plugins: [elizclawPlugin, priceGuessPlugin],
   settings: {
+    model: "llama-3.1-8b-instant",
+    modelConfig: {
+      max_response_length: 1024,
+    },
     secrets: {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
       OPENAI_API_URL: process.env.OPENAI_API_URL || "http://localhost:8000/v1",

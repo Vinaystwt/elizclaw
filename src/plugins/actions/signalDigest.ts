@@ -36,10 +36,15 @@ export const signalDigestAction: Action = {
   name: "SIGNAL_DIGEST",
   similes: ["DAILY_BRIEF", "MORNING_BRIEF", "DAILY_SUMMARY", "WHAT_HAPPENED_TODAY"],
   description: "Generate a daily structured brief of market state, whale activity, and task outcomes",
+  examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
-    return /(daily brief|morning brief|what happened today|digest|summary)/i.test(text);
+    return text.includes("brief")
+      || text.includes("digest")
+      || text.includes("morning")
+      || text.includes("summary")
+      || text.includes("what happened");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {

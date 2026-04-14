@@ -109,10 +109,10 @@ export const whaleWatcherAction: Action = {
   description: "Track notable Solana wallets and get alerts on large movements",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
-    return /(whale|smart.money|large.transfer|track.*(wallet|address)|big.move)/i.test(lower)
-      || (/(alert|notify|watch).*(whale|wallet|transfer)/i.test(lower));
+    const text = ((message.content as any)?.text || "").toLowerCase();
+    return text.includes("whale")
+      || text.includes("whale activity")
+      || text.includes("large move");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {

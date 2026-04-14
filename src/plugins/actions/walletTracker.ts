@@ -219,14 +219,13 @@ export const walletTrackerAction: Action = {
   name: "WALLET_TRACKER",
   similes: ["CHECK_WALLET", "PORTFOLIO", "TRACK_WALLET", "BALANCE_CHECK"],
   description: "Track a Solana wallet portfolio with balance and value alerts",
+  examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
-    // Match Solana addresses (base58, 32-44 chars)
-    const hasAddress = /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(text);
-    return (/(wallet|portfolio|balance|track|check).*(sol|solana)/i.test(lower) || hasAddress)
-      && /(check|track|monitor|what.*have|portfolio)/i.test(lower);
+    const text = ((message.content as any)?.text || "").toLowerCase();
+    return text.includes("wallet")
+      || text.includes("track wallet")
+      || text.includes("address");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {

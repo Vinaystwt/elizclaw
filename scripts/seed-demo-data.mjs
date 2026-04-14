@@ -50,7 +50,7 @@ const demoTasks = [
   {
     id: 102,
     name: "Track wallet Binance cold storage for large moves",
-    type: "whale_watcher",
+    type: "signal_monitor",
     schedule: "every hour",
     config: { address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM" },
     is_active: 1,
@@ -76,12 +76,14 @@ const demoTasks = [
 const demoLogs = [
   { id: "demo-log-1", task_id: 101, type: "price_monitor", status: "success", output: "BTC checked at $94,230. Threshold not triggered.", executed_at: hoursAgo(44), duration_ms: 842 },
   { id: "demo-log-2", task_id: 103, type: "signal_monitor", status: "success", output: "Trending coins: SOL, ETH, BNB. Market cap +1.8%.", executed_at: hoursAgo(36), duration_ms: 1130 },
-  { id: "demo-log-3", task_id: 102, type: "whale_watcher", status: "success", output: "Binance Cold Wallet moved 12,000 ETH OUT ($28.4M).", executed_at: hoursAgo(36), duration_ms: 930 },
+  { id: "demo-log-3", task_id: 102, type: "signal_monitor", status: "success", output: "Signal monitor flagged outsized Binance cold wallet activity alongside elevated ETH volume.", executed_at: hoursAgo(36), duration_ms: 930 },
   { id: "demo-log-4", task_id: 101, type: "price_monitor", status: "success", output: "BTC checked at $93,100. Momentum below 7-day average.", executed_at: hoursAgo(28), duration_ms: 801 },
   { id: "demo-log-5", task_id: 103, type: "signal_monitor", status: "success", output: "Trending coins: SOL, ETH, BNB. Builders active across Solana repos.", executed_at: hoursAgo(20), duration_ms: 1204 },
-  { id: "demo-log-6", task_id: 102, type: "whale_watcher", status: "success", output: "Wintermute received 500,000 USDC IN.", executed_at: hoursAgo(18), duration_ms: 954 },
+  { id: "demo-log-6", task_id: 102, type: "signal_monitor", status: "success", output: "Signal monitor spotted stablecoin inflows and improving liquidity across major desks.", executed_at: hoursAgo(18), duration_ms: 954 },
   { id: "demo-log-7", task_id: 101, type: "price_monitor", status: "success", output: "BTC checked at $95,440. Alert triggered above threshold.", executed_at: hoursAgo(8), duration_ms: 883 },
-  { id: "demo-log-8", task_id: 103, type: "signal_monitor", status: "failed", output: "CoinGecko returned 429 during signal fetch.", executed_at: hoursAgo(2), duration_ms: 1500 },
+  { id: "demo-log-8", task_id: 103, type: "signal_monitor", status: "success", output: "Signal monitor completed normally. BTC momentum firmed while altcoin breadth stayed constructive.", executed_at: hoursAgo(2), duration_ms: 1500 },
+  { id: "demo-log-9", task_id: 102, type: "signal_monitor", status: "success", output: "Cross-market read stayed bullish as whale activity, trend strength, and dev activity aligned.", executed_at: hoursAgo(1), duration_ms: 1014 },
+  { id: "demo-log-10", task_id: 103, type: "signal_monitor", status: "success", output: "Morning brief generated with 3 confirmed signals and no critical failures.", executed_at: hoursAgo(0.5), duration_ms: 1188 },
 ];
 
 const demoWhaleEvents = [
@@ -139,13 +141,13 @@ const demoReports = [
   {
     timestamp: hoursAgo(24),
     totalTasks: 3,
-    successRate: 94,
-    failureRate: 6,
+    successRate: 98,
+    failureRate: 2,
     mostUsedAction: "MONITOR_PRICE",
     tasksByType: {
       price_monitor: 12,
       signal_monitor: 8,
-      whale_watcher: 6,
+      whale_watcher: 0,
     },
     recentFailures: [],
     uptime: 86400,

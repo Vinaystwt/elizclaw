@@ -193,10 +193,12 @@ export const signalMonitorAction: Action = {
   description: "Monitor crypto social signals, trending coins, and market sentiment",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
-    return /(what.*happening|market.sentiment|trending|social.signal|what.*moving|market.overview)/i.test(lower)
-      && /(crypto|market|coin|solana|bitcoin|btc|defi)/i.test(lower);
+    const text = ((message.content as any)?.text || "").toLowerCase();
+    return text.includes("crypto")
+      || text.includes("market")
+      || text.includes("signal")
+      || text.includes("happening")
+      || text.includes("trending");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {

@@ -49,10 +49,14 @@ export const watchlistAction: Action = {
   name: "WATCHLIST",
   similes: ["COIN_WATCHLIST", "WATCH_COIN", "REMOVE_WATCHLIST_ITEM"],
   description: "Add, remove, and view a personal watchlist of tracked coins",
+  examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
-    return /(add to watchlist|watch coin|watchlist|remove from watchlist|my watchlist)/i.test(text);
+    return text.includes("watchlist")
+      || text.includes("watch list")
+      || text.includes("my coins")
+      || text.includes("check my watch");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {
