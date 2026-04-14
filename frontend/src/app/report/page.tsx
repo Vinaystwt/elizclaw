@@ -5,20 +5,13 @@ import { Badge } from "@/components/ui/Badge";
 import { MonoText } from "@/components/ui/MonoText";
 import { Panel } from "@/components/ui/Panel";
 import { fetchJson } from "@/lib/api";
-import { clamp, formatDuration, formatTimestamp } from "@/lib/format";
+import { formatDuration, formatTimestamp } from "@/lib/format";
+import { computeAgentHealth } from "@/lib/health";
 import type { ReportRecord } from "@/lib/types";
 
 type ReportResponse = {
   report: ReportRecord | null;
 };
-
-function computeHealth(report: ReportRecord | null) {
-  if (!report) return 0;
-  const successRate = report.successRate ?? 0;
-  const uptimeNorm = clamp(((report.uptime ?? 0) / (60 * 60 * 12)) * 100, 0, 100);
-  const activityNorm = clamp(((report.totalTasks ?? report.totalExecuted) ?? 0) * 8, 0, 100);
-  return Math.round(clamp(successRate * 0.5 + uptimeNorm * 0.3 + activityNorm * 0.2, 0, 100));
-}
 
 export default function ReportPage() {
   const [report, setReport] = useState<ReportRecord | null>(null);
@@ -45,7 +38,7 @@ export default function ReportPage() {
     };
   }, []);
 
-  const health = useMemo(() => computeHealth(report), [report]);
+  const health = useMemo(() => computeAgentHealth(report), [report]);
 
   useEffect(() => {
     if (!health) {

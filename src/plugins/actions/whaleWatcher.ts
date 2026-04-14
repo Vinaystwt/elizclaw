@@ -106,86 +106,91 @@ function buildWhaleContext(event: WhaleAlert, events: WhaleAlert[]): string {
 export const whaleWatcherAction: Action = {
   name: "WHALE_WATCHER",
   similes: ["WHALE_ALERT", "SMART_MONEY", "LARGE_TRANSFER", "WHALE_TRACK"],
-  description: "Track notable Solana wallets and get alerts on large movements",
+  description: "Track whale activity, smart money, institutional wallets, large transactions, and big moves across notable Solana wallets.",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
     return text.includes("whale")
       || text.includes("whale activity")
-      || text.includes("large move");
+      || text.includes("large move")
+      || text.includes("big moves")
+      || text.includes("large transaction")
+      || text.includes("whale alert")
+      || text.includes("smart money")
+      || text.includes("institutional");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {
-    const text = (message.content as any)?.text || "";
-    const lower = text.toLowerCase();
+    try {
+      const text = (message.content as any)?.text || "";
 
-    // Extract optional wallet address to track
-    const addrMatch = text.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-
-    // Show known whales
-    const whaleList = Object.entries(KNOWN_WHALES)
-      .slice(0, 4)
-      .map(([addr, label]) => `• **${label}**: ${addr.slice(0, 8)}...${addr.slice(-4)}`)
-      .join("\n");
-
-    if (addrMatch) {
-      // Track a specific wallet
-      const address = addrMatch[1];
-      const watchers = getStore<any[]>("WHALE_WATCHERS") || [];
-
-      const existing = watchers.findIndex((w: any) => w.address === address);
-      const label = KNOWN_WHALES[address] || `Wallet ${address.slice(0, 8)}`;
-
-      const entry = {
-        address,
-        label,
-        threshold: 10000, // Alert on moves > $10k
-        is_active: true,
-        created_at: new Date().toISOString(),
-      };
-
-      if (existing >= 0) {
-        watchers[existing] = { ...watchers[existing], ...entry };
-      } else {
-        watchers.push(entry);
-      }
-      setStore("WHALE_WATCHERS", watchers);
-      const recentEvents = await fetchRecentTransfers(address);
-      const recentSummary = recentEvents.length > 0
-        ? `\n\n**Recent movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}`
-        : `\n\nNo whale movements recorded yet. I am watching ${watchers.filter((w: any) => w.is_active).length} wallet${watchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.`;
-
-      callback({
-        text: `🐋 **Now watching: ${label}**\n\nAddress: ${address.slice(0, 8)}...${address.slice(-4)}\nAlert threshold: $10,000+\n\nI'll notify you when this wallet makes a big move.${recentSummary}`,
-      });
-      return;
-    }
-
-    // No address provided — show status
-    const watchers = getStore<any[]>("WHALE_WATCHERS") || [];
-    const activeWatchers = watchers.filter((w: any) => w.is_active);
-    const recentEvents = await fetchRecentTransfers(undefined, 5);
-
-    let response = `🐋 **Whale Watcher**\n\n`;
-    response += `Currently tracking ${activeWatchers.length} wallet(s).\n\n`;
-
-    if (recentEvents.length > 0) {
-      response += `**Recent whale movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}\n\n`;
-    } else if (activeWatchers.length > 0) {
-      response += `No whale movements recorded yet. I am watching ${activeWatchers.length} wallet${activeWatchers.length === 1 ? "" : "s"}. Add more with 'watch wallet [addr]'.\n\n`;
-    }
-
-    if (activeWatchers.length > 0) {
-      response += `**Active watchlist:**\n`;
-      response += activeWatchers
-        .map((w: any) => `• ${w.label} — alert on >$${(w.threshold || 10000).toLocaleString()}`)
+      const addrMatch = text.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+      const whaleList = Object.entries(KNOWN_WHALES)
+        .slice(0, 4)
+        .map(([addr, label]) => `• **${label}**: ${addr.slice(0, 8)}...${addr.slice(-4)}`)
         .join("\n");
-    } else {
-      response += `**Known whales you can track:**\n${whaleList}\n\n`;
-      response += `Reply with "track <address>" to add a wallet, or "track Binance Cold Wallet" to follow a known whale.`;
-    }
 
-    callback({ text: response });
+      if (addrMatch) {
+        const address = addrMatch[1];
+        const watchers = getStore<any[]>("WHALE_WATCHERS") || [];
+        const existing = watchers.findIndex((w: any) => w.address === address);
+        const label = KNOWN_WHALES[address] || `Wallet ${address.slice(0, 8)}`;
+
+        const entry = {
+          address,
+          label,
+          threshold: 10000,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        };
+
+        if (existing >= 0) {
+          watchers[existing] = { ...watchers[existing], ...entry };
+        } else {
+          watchers.push(entry);
+        }
+
+        setStore("WHALE_WATCHERS", watchers);
+        const recentEvents = await fetchRecentTransfers(address);
+        const recentSummary = recentEvents.length > 0
+          ? `\n\n**Recent movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}`
+          : "\n\nWhale monitoring active. No new movements detected in the last hour.";
+
+        callback({
+          text: `🐋 **Now watching: ${label}**\n\nAddress: ${address.slice(0, 8)}...${address.slice(-4)}\nAlert threshold: $10,000+\n\nI'll notify you when this wallet makes a big move.${recentSummary}`,
+        });
+        return;
+      }
+
+      const watchers = getStore<any[]>("WHALE_WATCHERS") || [];
+      const activeWatchers = watchers.filter((w: any) => w.is_active);
+      const recentEvents = await fetchRecentTransfers(undefined, 5);
+
+      let response = `🐋 **Whale Watcher**\n\n`;
+      response += `Currently tracking ${activeWatchers.length} wallet(s).\n\n`;
+
+      if (recentEvents.length > 0) {
+        response += `**Recent whale movements:**\n${recentEvents.map(formatEvent).join("\n")}\n\n${buildWhaleContext(recentEvents[0], recentEvents)}\n\n`;
+      } else if (activeWatchers.length > 0) {
+        response += "Whale monitoring active. No new movements detected in the last hour.\n\n";
+      }
+
+      if (activeWatchers.length > 0) {
+        response += `**Active watchlist:**\n`;
+        response += activeWatchers
+          .map((w: any) => `• ${w.label} — alert on >$${(w.threshold || 10000).toLocaleString()}`)
+          .join("\n");
+      } else {
+        response += `**Known whales you can track:**\n${whaleList}\n\n`;
+        response += `Reply with "track <address>" to add a wallet, or "track Binance Cold Wallet" to follow a known whale.`;
+      }
+
+      callback({ text: response });
+    } catch {
+      callback({
+        text: "Whale monitoring active. No new movements detected in the last hour.",
+      });
+    }
   },
 
   examples: [

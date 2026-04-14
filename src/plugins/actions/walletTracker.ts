@@ -218,14 +218,18 @@ function generateWalletNarrative(balances: TokenBalance[], totalValue: number, s
 export const walletTrackerAction: Action = {
   name: "WALLET_TRACKER",
   similes: ["CHECK_WALLET", "PORTFOLIO", "TRACK_WALLET", "BALANCE_CHECK"],
-  description: "Track a Solana wallet portfolio with balance and value alerts",
+  description: "Track a wallet or portfolio, follow wallet activity, check holdings, inspect a Solana address, and summarize balances in a natural language portfolio view.",
   examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
     return text.includes("wallet")
       || text.includes("track wallet")
-      || text.includes("address");
+      || text.includes("address")
+      || text.includes("follow wallet")
+      || text.includes("portfolio")
+      || text.includes("holdings")
+      || text.includes("my wallet");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {

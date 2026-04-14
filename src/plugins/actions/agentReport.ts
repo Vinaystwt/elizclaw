@@ -11,7 +11,7 @@ import { getStore, setStore } from "../store.ts";
 export const agentReportAction: Action = {
   name: "AGENT_REPORT",
   similes: ["SELF_REPORT", "PERFORMANCE_REPORT", "STATUS_REPORT"],
-  description: "Generate a first-person performance report of the agent's execution history",
+  description: "Report how the agent is doing with a health check, report card, performance summary, agent status, and whether the system is working correctly.",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
@@ -19,7 +19,13 @@ export const agentReportAction: Action = {
       || text.includes("report card")
       || text.includes("health")
       || text.includes("how are you")
-      || text.includes("status");
+      || text.includes("status")
+      || text.includes("your status")
+      || text.includes("health check")
+      || text.includes("performance")
+      || text.includes("how is the agent")
+      || text.includes("are you working")
+      || text.includes("agent status");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {

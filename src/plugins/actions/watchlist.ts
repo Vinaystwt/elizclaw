@@ -48,7 +48,7 @@ export function findRequestedCoin(text: string) {
 export const watchlistAction: Action = {
   name: "WATCHLIST",
   similes: ["COIN_WATCHLIST", "WATCH_COIN", "REMOVE_WATCHLIST_ITEM"],
-  description: "Add, remove, and view a personal watchlist of tracked coins",
+  description: "Add coins to a watchlist, remove coins, inspect my coins, manage a portfolio watch, and review coins I am watching.",
   examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
@@ -56,7 +56,12 @@ export const watchlistAction: Action = {
     return text.includes("watchlist")
       || text.includes("watch list")
       || text.includes("my coins")
-      || text.includes("check my watch");
+      || text.includes("check my watch")
+      || text.includes("coins i'm watching")
+      || text.includes("coins im watching")
+      || text.includes("portfolio watch")
+      || text.includes("add coin")
+      || text.includes("remove coin");
   },
 
   handler: async (_runtime: IAgentRuntime, message: Memory, _state: State, _options: any, callback: any) => {

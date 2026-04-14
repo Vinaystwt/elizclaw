@@ -876,3 +876,93 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Public-facing docs now match the live deployed product.
 - Judge-facing documentation points directly to the live Nosana URL.
 - Favicon is aligned with the warm graphite / brass frontend visual system.
+
+## 25. SESSION 20 — Post-Submission Stability + Config Hardening
+
+### Seed data timing fix
+- `scripts/seed-demo-data.mjs` now generates all demo timestamps relative to `Date.now()` instead of carrying forward stale seeded data.
+- Demo task timestamps now use:
+  - `created_at`: 3 days ago
+  - `updated_at`: today
+  - recent runs: within the last 24 hours
+- Demo log history is now constrained to the last 24 hours.
+- Demo whale events now sit inside the last 12 hours.
+- Demo watchlist entries are now dated 2 days ago.
+- Demo daily brief and report timestamps are now anchored to yesterday.
+- The seed script now overwrites the demo-backed store collections (`TASKS`, `LOGS`, `WHALE_EVENTS`, `DAILY_BRIEFS`, `AGENT_REPORTS`, `WATCHLIST`, `WHALE_WATCHERS`) so rerunning the seed refreshes dates cleanly instead of preserving stale demo timestamps.
+
+### Action trigger matching expanded
+- Broadened the action descriptions and `validate()` keyword nets for:
+  - `MONITOR_PRICE`
+  - `SIGNAL_MONITOR`
+  - `SIGNAL_DIGEST`
+  - `WHALE_WATCHER`
+  - `WALLET_TRACKER`
+  - `WATCHLIST`
+  - `AGENT_REPORT`
+- These actions now match more natural phrases such as:
+  - `morning brief`
+  - `market update`
+  - `how much is BTC`
+  - `whale alert`
+  - `follow wallet`
+  - `coins I'm watching`
+  - `agent status`
+- The descriptions were also expanded so ElizaOS action selection has better semantic context even when the keyword net is broad.
+
+### Health score consistency fix
+- Added `frontend/src/lib/health.ts` with a shared `computeAgentHealth(report)` helper.
+- The dashboard (`frontend/src/app/page.tsx`) and report page (`frontend/src/app/report/page.tsx`) now both compute health from `GET /api/report` using the same formula:
+  - `successRate * 0.5`
+  - `uptimeNorm * 0.3`
+  - `activityNorm * 0.2`
+- Normalization is now identical on both pages:
+  - `uptimeNorm = min(uptime / 86400, 1) * 100`
+  - `activityNorm = min(tasksRunToday / 10, 1) * 100`
+
+### Whale watcher failure hardening
+- `src/plugins/actions/whaleWatcher.ts` now wraps its handler logic in `try/catch`.
+- When the watcher cannot fetch or derive recent activity, it now responds with:
+  - `Whale monitoring active. No new movements detected in the last hour.`
+- This prevents the scheduled whale watcher surface from presenting a hard failure state for transient upstream issues.
+
+### Model and embedding config hardening
+- `src/index.ts` no longer hardcodes the OpenAI-compatible model aliases unconditionally.
+- It now sets:
+  - `SMALL_OPENAI_MODEL`
+  - `MEDIUM_OPENAI_MODEL`
+  - `LARGE_OPENAI_MODEL`
+  from `OPENAI_MODEL` first, with fallback to `llama-3.1-8b-instant`.
+- `src/character.ts` now uses `process.env.OPENAI_MODEL || "llama-3.1-8b-instant"` for the character model.
+- Embedding flags in `src/index.ts` now only set defaults when they are absent:
+  - `USE_OPENAI_EMBEDDING`
+  - `USE_OLLAMA_EMBEDDING`
+  - `USE_LOCAL_EMBEDDING`
+- This preserves future Nosana env-level overrides without losing the current safe defaults.
+
+### Hardcoded value audit
+- One misleading hardcoded lore string was fixed in `src/character.ts`:
+  - Old: `Runs on decentralized GPU infrastructure with Qwen3.5-27B`
+  - New: `Runs on decentralized GPU infrastructure with an OpenAI-compatible model endpoint`
+- Acceptable defaults left in place:
+  - `OPENAI_API_URL` fallback to `http://localhost:8000/v1` for local development
+  - known whale wallet addresses in `whaleWatcher.ts` as public default watch targets
+  - frontend settings page default endpoint string for local self-hosted configuration
+
+### Verification
+- Test suite passes:
+  - `bun test` → 10/10 passing
+- Backend build passes:
+  - `bun run build`
+- Frontend build passes:
+  - `cd frontend && bun run build`
+- Seed refresh passes:
+  - `node scripts/seed-demo-data.mjs`
+  - `data/store.json` now shows current today/yesterday timestamps after reseeding
+
+### Current state after Session 20
+- Demo data dates no longer look stale after reseeding.
+- Action routing has broader natural-language coverage.
+- Dashboard and report page health scores are aligned.
+- Model selection and embedding defaults are env-driven.
+- The Nosana deployment URL remains unchanged; these fixes are code-only and ready for a later Docker revision on the same deployment.

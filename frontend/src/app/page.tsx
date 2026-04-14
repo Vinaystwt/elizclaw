@@ -14,6 +14,7 @@ import { MonoText } from "@/components/ui/MonoText";
 import { Panel } from "@/components/ui/Panel";
 import { fetchJson } from "@/lib/api";
 import { clamp, formatDateStamp, formatDuration, formatTimestamp } from "@/lib/format";
+import { computeAgentHealth } from "@/lib/health";
 import type { DigestRecord, LogRecord, ReportRecord, TaskRecord } from "@/lib/types";
 
 type DashboardPayload = {
@@ -26,13 +27,6 @@ type DashboardPayload = {
 type DashboardState = DashboardPayload & {
   loading: boolean;
 };
-
-function computeHealth(report: ReportRecord | null, logs: LogRecord[]) {
-  const successRate = report?.successRate ?? 0;
-  const uptimeNorm = clamp(((report?.uptime ?? 0) / (60 * 60 * 12)) * 100, 0, 100);
-  const activityNorm = clamp(logs.length * 12, 0, 100);
-  return Math.round(clamp(successRate * 0.5 + uptimeNorm * 0.3 + activityNorm * 0.2, 0, 100));
-}
 
 function digestLines(digest: DigestRecord | null, tasks: TaskRecord[], logs: LogRecord[]) {
   const output = digest?.brief || "";
@@ -93,7 +87,7 @@ export default function DashboardPage() {
   }, []);
 
   const metrics = useMemo(() => {
-    const health = computeHealth(state.report, state.logs);
+    const health = computeAgentHealth(state.report);
     const lastExecution = state.logs[0]?.executed_at || null;
     const activeTasks = state.tasks.filter((task) => task.is_active).length;
     return {

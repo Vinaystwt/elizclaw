@@ -10,7 +10,7 @@ import { MonitorPriceInput } from "../utils/schemas.ts";
 export const monitorPriceAction: Action = {
   name: "MONITOR_PRICE",
   similes: ["CHECK_PRICE", "PRICE_ALERT", "TRACK_PRICE"],
-  description: "Fetch current crypto price with optional threshold alerting",
+  description: "Check crypto prices, answer questions like price of BTC or how much is ETH, and set price alerts or notify me when a coin crosses a threshold.",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
@@ -18,6 +18,18 @@ export const monitorPriceAction: Action = {
       || text.includes("alert")
       || text.includes("price")
       || text.includes("watch")
+      || text.includes("check price")
+      || text.includes("price of")
+      || text.includes("how much is")
+      || text.includes("btc price")
+      || text.includes("eth price")
+      || text.includes("coin price")
+      || text.includes("alert me")
+      || text.includes("notify me when")
+      || text.includes("watch price")
+      || text.includes("bitcoin")
+      || text.includes("ethereum")
+      || text.includes("solana")
       || (
         text.includes("track")
         && (

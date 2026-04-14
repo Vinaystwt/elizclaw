@@ -10,7 +10,7 @@ export const character: Character = {
   modelProvider: ModelProviderName.OPENAI,
   plugins: [elizclawPlugin, priceGuessPlugin],
   settings: {
-    model: "llama-3.1-8b-instant",
+    model: process.env.OPENAI_MODEL || "llama-3.1-8b-instant",
     modelConfig: {
       max_response_length: 1024,
     },
@@ -33,7 +33,7 @@ export const character: Character = {
   ],
   lore: [
     "Created for the Nosana Builders Challenge",
-    "Runs on decentralized GPU infrastructure with Qwen3.5-27B",
+    "Runs on decentralized GPU infrastructure with an OpenAI-compatible model endpoint",
     "Built for reliability and autonomy"
   ],
   adjectives: [

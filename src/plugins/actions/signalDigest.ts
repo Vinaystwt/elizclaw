@@ -35,7 +35,7 @@ function getNextScheduledTask() {
 export const signalDigestAction: Action = {
   name: "SIGNAL_DIGEST",
   similes: ["DAILY_BRIEF", "MORNING_BRIEF", "DAILY_SUMMARY", "WHAT_HAPPENED_TODAY"],
-  description: "Generate a daily structured brief of market state, whale activity, and task outcomes",
+  description: "Generate a morning brief or daily brief summarizing what happened, market conditions, whale activity, task outcomes, and the latest crypto signals.",
   examples: [],
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
@@ -44,7 +44,18 @@ export const signalDigestAction: Action = {
       || text.includes("digest")
       || text.includes("morning")
       || text.includes("summary")
-      || text.includes("what happened");
+      || text.includes("what happened")
+      || text.includes("morning brief")
+      || text.includes("daily brief")
+      || text.includes("market update")
+      || text.includes("crypto news")
+      || text.includes("how is market")
+      || text.includes("market conditions")
+      || text.includes("trending")
+      || text.includes("brief me")
+      || text.includes("update me")
+      || text.includes("what's going on")
+      || text.includes("whats going on");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {

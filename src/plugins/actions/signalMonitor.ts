@@ -190,7 +190,7 @@ export function formatSignalBrief(snapshot: SignalSnapshot): string {
 export const signalMonitorAction: Action = {
   name: "SIGNAL_MONITOR",
   similes: ["SOCIAL_SIGNAL", "MARKET_SENTIMENT", "TRENDING", "WHAT_IS_HAPPENING"],
-  description: "Monitor crypto social signals, trending coins, and market sentiment",
+  description: "Give a crypto market update with signals, trending assets, market conditions, crypto news, and what is going on right now.",
 
   validate: async (_runtime: IAgentRuntime, message: Memory) => {
     const text = ((message.content as any)?.text || "").toLowerCase();
@@ -198,7 +198,14 @@ export const signalMonitorAction: Action = {
       || text.includes("market")
       || text.includes("signal")
       || text.includes("happening")
-      || text.includes("trending");
+      || text.includes("trending")
+      || text.includes("market update")
+      || text.includes("crypto news")
+      || text.includes("how is market")
+      || text.includes("market conditions")
+      || text.includes("update me")
+      || text.includes("what's going on")
+      || text.includes("whats going on");
   },
 
   handler: async (_runtime: IAgentRuntime, _message: Memory, _state: State, _options: any, callback: any) => {
