@@ -19,6 +19,7 @@ WORKDIR /app
 
 COPY package.json bun.lockb* ./
 RUN bun install
+RUN mkdir -p /app/cache && node -e "const { FlagEmbedding, EmbeddingModel } = require('fastembed'); FlagEmbedding.init({ cacheDir: '/app/cache/', model: EmbeddingModel.BGESmallENV15, maxLength: 512, showDownloadProgress: false }).then(() => console.log('Embedding model ready')).catch((e) => console.log('Embedding skip:', e.message));" || true
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/frontend/out ./frontend/out
