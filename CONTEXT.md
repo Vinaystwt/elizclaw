@@ -852,3 +852,27 @@ END OF CONTEXT FILE. You now have complete knowledge of the ElizClaw project. Re
 - Root URL now serves the dashboard HTML instead of the REST API welcome text.
 - Health endpoint remains healthy.
 - Latest Docker image includes the static frontend routing fix for Nosana deployment.
+
+## 24. SESSION 19 — Docs Refresh + Brass Favicon
+
+### Branding and favicon updates
+- Removed the old frontend favicon asset references and replaced the favicon with a new brass `E` on the warm graphite background.
+- `frontend/public/favicon.svg` now contains the final production favicon used by the dashboard.
+- `frontend/src/app/layout.tsx` metadata now points icon, shortcut, and apple entries to `/favicon.svg`.
+- Added an explicit `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` tag in the root layout head.
+- Confirmed there are no remaining `favicon.ico` or `favicon.png` references in `frontend/src`.
+
+### Documentation updates
+- `README.md` was completely rewritten around the live Nosana deployment URL, current Docker image, architecture summary, and challenge positioning.
+- `JUDGE_GUIDE.md` was completely rewritten with a faster evaluation flow, live deployment links, updated judging checklist, and current API/test guidance.
+- Live Nosana URL is now documented prominently in both README and Judge Guide.
+
+### Verification
+- Frontend rebuild completed successfully after the favicon/layout metadata update:
+  - `cd frontend && bun run build`
+  - Static routes generated successfully with zero errors.
+
+### Current state after Session 19
+- Public-facing docs now match the live deployed product.
+- Judge-facing documentation points directly to the live Nosana URL.
+- Favicon is aligned with the warm graphite / brass frontend visual system.

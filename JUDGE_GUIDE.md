@@ -1,81 +1,110 @@
-# ElizClaw — Judge's Guide
+# ElizClaw — Judge Guide
 
-This file gives you the fastest path to evaluating ElizClaw. Everything you need in 5 minutes.
+## TL;DR
+Live URL: https://myf3FTbR1Ngah4KXeyu7cypdNRe5KpWisNxjGeZ9KMYE.node.k8s.prd.nos.ci
+Docker: vinaystwt/elizclaw:latest
+GitHub: https://github.com/Vinaystwt/elizclaw
 
-## Live Demo
+---
 
-[Nosana deployment URL — to be added after deployment]
+## Fastest Way to See It Working (2 minutes)
 
-Screenshot: see README.md Screenshots section
+1. Open the live URL above
+2. Type: "Morning brief"
+3. Type: "What's happening in crypto?"
+4. Click Watchlist in the sidebar
+5. Click Report in the sidebar
 
-## What Makes This Different
+---
 
-After researching 5,400+ projects via Colosseum Copilot, we identified that the DeFi execution space is saturated (270+ projects doing swapping, trading, portfolio management). ElizClaw focuses on the unsolved gap: **continuous monitoring and on-chain intelligence**. It watches your portfolio, tracks whale wallets, aggregates market signals — and only tells you what matters.
+## What ElizClaw Does
 
-## Fastest Evaluation Path
+Personal on-chain intelligence agent. Not a trading 
+bot — a 24/7 autonomous analyst that watches wallets, 
+monitors whale movements, tracks market signals, and 
+delivers daily briefs. Never touches user funds.
 
-1. **Start with the dashboard** — create a task via chat: *"Check BTC price every hour"*
-2. **Go to Tasks tab** — see the task created with schedule and status indicator
-3. **Ask: "How are you performing?"** — agent self-reports execution statistics
-4. **Ask: "What's happening in crypto?"** — signal aggregation across CoinGecko + GitHub
-5. **Check Activity Feed** — see execution logs with sparkline charts for price data
-6. **Check Whale Timeline** — color-coded on-chain activity feed on dashboard
+---
 
-## Key Technical Decisions
+## Judging Criteria Checklist
 
-See **Architecture Decisions** section in README.md for the full rationale behind every major choice: JSON persistence, setInterval + p-queue scheduling, Next.js static export, Zod validation, pino structured logging.
+### Technical Implementation (25pts)
+- 13 custom ElizaOS actions with real API integrations
+- Background scheduler with 60s autonomous polling
+- Write mutex preventing concurrent data corruption
+- Zod validation, Pino logging, global error handler
+- CORS + rate limiting on all API routes
+- 10/10 unit tests passing
+- Single-port production architecture
 
-## Test Commands (if running locally)
+### Nosana Integration (25pts)
+- Live deployment: NVIDIA RTX 3060 on Nosana
+- Docker image: vinaystwt/elizclaw:latest
+- Health check: /health endpoint
+- Job definition: nos_job_def/
+- Autonomous restart supervisor in start.mjs
+- Compatible with Nosana-provided model endpoints
+  via OPENAI_API_URL + OPENAI_MODEL env vars
+
+### Usefulness & UX (25pts)
+- Dashboard: Signal Digest, Agent Health, 
+  Live Activity, Whale Timeline
+- Chat: structured intelligence responses with 
+  work states (thinking/fetching/cross-referencing)
+- Watchlist: live prices, semantic color coding
+- Report: synthetic health score + metrics grid
+- Tasks: autonomous scheduling in plain English
+- Settings: one-click Export Config download
+
+### Creativity & Originality (15pts)
+- Monitoring-first positioning (not DeFi execution)
+- Alert Rationale: explains WHY alerts triggered
+- Portfolio x Whale Overlap analysis
+- Agent Report Card with self-assessment
+- Signal Fusion: synthesizes to one OVERALL READ
+
+### Documentation (10pts)
+- Comprehensive README with architecture diagram
+- This JUDGE_GUIDE.md
+- CONTRIBUTING.md
+- Inline code comments
+- Export Config deployment template
+
+---
+
+## Key Commands to Test
+Morning brief
+What's happening in crypto?
+Track wallet 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM
+Monitor BTC daily at 8AM, alert if above $95,000
+Check my watchlist
+How are you performing?
+Any whale activity?
+
+---
+
+## API Endpoints
+
+GET  /health          — agent status
+GET  /api/digest      — latest daily brief
+GET  /api/report      — agent report card data
+GET  /api/watchlist   — watched coins + prices
+GET  /api/tasks       — scheduled tasks
+GET  /api/export-config — deployment template
+
+---
+
+## Local Setup (if needed)
 
 ```bash
-# Run unit tests
-bun test
-
-# Build verification
-cd frontend && bun run build
-
-# Docker build
-docker build -t elizclaw .
+git clone https://github.com/Vinaystwt/elizclaw
+cd elizclaw
+bun install && bun run build
+node scripts/seed-demo-data.mjs
+OPENAI_API_KEY=key OPENAI_API_URL=endpoint \
+NODE_ENV=production node dist/index.js
 ```
 
-## Scoring Notes
+Open http://localhost:3000
 
-### Technical Implementation (25%)
-- 11 custom actions, 3 providers, 1 evaluator
-- Zod validation on all action inputs
-- Global error handling with sanitized messages
-- pino structured logging (JSON in production)
-- p-queue concurrency: 2 on task scheduler
-- 9 passing unit tests (http utility + store persistence)
-- HTTP utility with exponential backoff retries, 15s timeouts, rate-limit detection
-- Write mutex prevents concurrent store corruption
-
-### Nosana Integration (25%)
-- Single-port architecture (agent serves dashboard + API on port 3000)
-- Docker HEALTHCHECK ready for deployment
-- Job definition at `nos_job_def/nosana_eliza_job_definition.json`
-- Multi-stage build with `oven/bun:1-slim`
-
-### Usefulness & UX (25%)
-- Live task execution status (running/completed/failed with visual indicators)
-- SVG sparkline charts for price monitoring history
-- Whale Alert Timeline with color-coded directional cards
-- Export/Import tasks as JSON
-- Quick Commands panel with one-click prompts
-- Settings page wired to localStorage
-- Skeleton loading states, error states with retry buttons
-
-### Creativity & Originality (15%)
-- Research-backed differentiation (avoided 270+ DeFi execution projects)
-- Wallet Narrative — algorithmic portfolio analysis with risk profile
-- Smart Money Tracker — cross-references holdings with whale activity
-- Narrative Alerts — price thresholds include broader market context
-- Agent Self-Report — audits its own execution statistics on command
-
-### Documentation (10%)
-- Comprehensive README with Mermaid architecture diagram
-- Architecture Decisions table explaining every major choice
-- This Judge's Guide for quick evaluation
-- JSDoc comments on all exports
-- Zod schemas documented in `src/plugins/utils/schemas.ts`
-- CONTRIBUTING.md for extensibility
+---
