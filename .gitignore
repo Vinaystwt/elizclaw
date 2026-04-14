@@ -12,3 +12,7 @@ data
 .DS_Store
 bun.lockb
 frontend/node_modules
+CONTEXT.md
+data/store.json
+data/*.json
+*.log

@@ -93,7 +93,7 @@ Deployed on Nosana GPU Network — NVIDIA RTX 3060
 | Layer | Technology |
 |-------|-----------|
 | Agent Framework | ElizaOS v2 |
-| Model Runtime | Groq (llama-3.1-8b-instant) |
+| Model Runtime | Groq / OpenRouter (llama-3.1-8b-instant or qwen/qwen3.5-27b) |
 | Runtime | Bun + TypeScript |
 | Frontend | Next.js 14 (static export) |
 | Design | Plus Jakarta Sans + JetBrains Mono |
